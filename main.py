@@ -3,8 +3,8 @@ from asyncio import sleep
 from time import time, ctime as ct
 
 from discord_components import DiscordComponents
-from discord import *
-from discord.ext import tasks, commands
+from nextcord import *
+from nextcord.ext import tasks, commands
 
 from DataBase import DB
 from config import *
@@ -13,16 +13,18 @@ from image_processing.UsersInfo import top, level_up
 from games.hub import hub
 from Admin_commands import get_command
 
-__author__ = "Vladi4ka | DendriveVlad"
+__author__ = "Vladi4ka | DendriveVlad | Deadly"
 
 db = DB()
 
 
 class Bot(commands.Bot):
-    async def on_ready(self):
+    def __init__(self):
+        super().__init__("/", intents=Intents.all())
         self.first_start = 0
         self.spam_count = []
-        DiscordComponents(self)
+
+    async def on_ready(self):
         guild = self.get_guild(SERVER_ID)
         newbie = utils.get(guild.roles, id=ROLES["Newbie"])
         old = utils.get(guild.roles, id=ROLES["Old"])
@@ -42,7 +44,7 @@ class Bot(commands.Bot):
 
         print(ct(), "Hello!")
 
-    async def on_member_join(self, member):
+    async def on_member_join(self, member: Member):
         t = int(time())
         while member.pending:
             await sleep(2)
@@ -56,13 +58,13 @@ class Bot(commands.Bot):
         await member.add_roles(utils.get(member.guild.roles, id=ROLES["Newbie"]))
         await self.send_log(f"[MemberJoin] <@{member.id}> стал частью сервера", 0x21F300)
 
-    async def on_member_remove(self, member):
+    async def on_member_remove(self, member: Member):
         if member.pending:
             return
         db.delete("users", f"user_id == {member.id}")
         await self.send_log(f"[MemberLeave] **{member}** покинул сервер", 0xBF1818)
 
-    async def on_message(self, message):
+    async def on_message(self, message: Message):
 
         if message.author.id == BOT_ID or message.channel.id == CHANNELS["hello"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
             return
@@ -110,26 +112,24 @@ class Bot(commands.Bot):
                     if channel.overwrites_for(message.author).view_channel is not None:
                         return
                     await channel.set_permissions(message.author, view_channel=True, connect=True, speak=True, stream=True)
-                    m = await message.channel.send(embed=Embed(description=f"<@{message.author.id}>, канал для вас открыт", color=0x21F300))
-                    await sleep(5)
-                    await m.delete()
+                    await message.channel.send(embed=Embed(description=f"<@{message.author.id}>, канал для вас открыт", color=0x21F300), delete_after=5)
                 except TypeError:
                     return
         # if message.channel.id == CHANNELS["Bot"] and message.content:
         #     if message.content[0] == "/":
         #         await self.process_commands(message)
 
-    async def on_message_delete(self, message):
+    async def on_message_delete(self, message: Message):
         if message.channel.category_id == CATEGORIES["Voice channels"] or message.channel.category_id == CATEGORIES["Bot"] or message.author.id in self.spam_count:
             return
         content = message.content if len(message.content) <= 1900 else message.content[0:1899]
         await self.send_log(f"[MessageRemove] Сообщение **{content}** от <@{message.author.id}> в канале <#{message.channel.id}> удалено", 0xBF1818)
 
-    async def on_message_edit(self, before, after):
+    async def on_message_edit(self, before: Message, after: Message):
         if before.channel.category_id == CATEGORIES["Bot"]:
             return
 
-        if len(after.content) + len(before.content) <= 1900:
+        if len(after.content) + len(before.content) <= 128:
             await self.send_log(f"[MessageEdit] Сообщение **{before.content}** от <@{after.author.id}> в канале <#{after.channel.id}> изменено на **{after.content}**", 0x285064)
             return
 
@@ -165,7 +165,7 @@ class Bot(commands.Bot):
                 return
             index += 1
 
-    async def on_voice_state_update(self, member, before, after):
+    async def on_voice_state_update(self, member: Message, before: VoiceState, after: VoiceState):
         if not after.channel and before.channel:
             await self.send_log(f"[VoiceDisconnect] <@{member.id}> вышел из голосового канала")
             date = db.select("users", f"user_id == {member.id}", "points", "talk_time")
@@ -237,7 +237,7 @@ class Bot(commands.Bot):
                     if await voice_control_panel(text, voice, member, self, db):
                         break
 
-    async def on_member_update(self, before, after):
+    async def on_member_update(self, before: Member, after: Member):
         new = utils.get(before.guild.roles, id=ROLES["Newbie"])
         old = utils.get(before.guild.roles, id=ROLES["Old"])
         if new in after.roles and old in after.roles:
@@ -246,13 +246,13 @@ class Bot(commands.Bot):
             elif old not in before.roles:
                 await after.remove_roles(new)
 
-    async def send_log(self, message, color=0x3B3B3B):
+    async def send_log(self, message: str, color: hex = 0x3B3B3B):
         channel = utils.get(self.get_guild(SERVER_ID).channels, id=CHANNELS["logs"])
         print(f"[{ct()}] {message}")
         await channel.send(embed=Embed(description=f"[{ct()}] {message}", colour=color))
 
     @staticmethod
-    async def get_level(member_id):
+    async def get_level(member_id: int):
         points = db.select("users", f"user_id == {member_id}", "points")["points"]
         for level, need_points in LEVEL_POINTS.items():
             if points < need_points:
@@ -311,7 +311,7 @@ class Bot(commands.Bot):
 
 
 intents = Intents.all()
-client = Bot(command_prefix="/", intents=Intents.all())
+client = Bot()
 client.remove_command("help")
 # for file in os.listdir("./cogs"):
 #     if file.endswith(".py"):
