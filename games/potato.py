@@ -3,9 +3,9 @@ from asyncio.exceptions import TimeoutError
 from asyncio import sleep
 from random import choice, sample, randint, shuffle
 
-from discord_components import Button, ButtonStyle
-from discord.errors import NotFound
-from discord import Embed
+from nextcord.errors import NotFound
+from nextcord import Embed, ButtonStyle
+from nextcord.ui import View, Button
 
 from config import BOT_ID
 
@@ -22,8 +22,8 @@ async def is_player_in_game(member, db):
                 return True
 
 
-async def potato_game(room, owner, bot, db, game_hub):
-    game = Game(bot, room, db, game_hub, owner)
+async def potato_game(room, owner, bot, db, game_hub, gamemode):
+    game = Game(bot, room, db, game_hub, owner, gamemode)
 
     try:
         member_gold_maximum = db.select("users", f"user_id == {owner}", "gold")["gold"]
@@ -60,17 +60,16 @@ async def potato_game(room, owner, bot, db, game_hub):
         await bot.send_log(f"[GameNotStarted] Игра <@{owner}> не началась", color=0xA927C1)
         await room.delete()
         return
-
-    game.invite_message = await game_hub.send(embed=Embed(title=f"Игра \"Горячая картошка 🔥🥔\"\n",
+    view = View()
+    view.add_item(Button(style=ButtonStyle.green, label="Подключиться", emoji="➕", custom_id=f"potato-{db.select('games', f'room_id == {room.id}', 'game_number')['game_number']}"))
+    game.invite_message = await game_hub.send(embed=Embed(title=f"Игра \"Горячая картошка ({'Быстрая' if game.mode == 's' else 'Длинная'})🔥🥔\"\n",
                                                           description=f"Стоимость входа: **{game.cost}**\n"
                                                                       f"Игроки [{game.players}/10]: <@{owner}>",
-                                                          color=0xEAEA04),
-                                              components=[Button(style=ButtonStyle.green, label="Подключиться", emoji="➕", custom_id=f"potato-{db.select('games', f'room_id == {room.id}', 'game_number')['game_number']}")])
+                                                          color=0xEAEA04), view=view)
     bot.loop.create_task(game.player_messages())
 
     try:
         await game.wait_players()
-
     except TimeoutError:
         if game.ready_to_start != 2:
             if len(db.select("games", f"room_id == {room.id}", "players")["players"].split()) >= 3:
@@ -85,24 +84,25 @@ async def potato_game(room, owner, bot, db, game_hub):
                 db.delete("games", f"room_id == {room.id}")
                 await room.delete()
                 if game.cost:
-                    for player in game.players_list:
+                    for player in game.players_list.keys():
                         db.update("users", f"user_id == {player}", gold=db.select("users", f"user_id == {player}", "gold")["gold"] + game.cost)
                 await bot.send_log(f"[GameNotStarted] Игра <@{owner}> не началась", color=0xA927C1)
                 return
 
 
 class Game:
-    def __init__(self, bot, room, db, game_hub, owner):
+    def __init__(self, bot, room, db, game_hub, owner, mode):
         self.bot = bot
         self.room = room
         self.db = db
         self.hub = game_hub
+        self.mode = mode
 
         self.invite_message = None
 
         self.ready_to_start = 0  # 0 - не готовы, 1 - игра начинается, 2 - игра уже началась
-        self.players_list = [owner]  # Список всех действующих игроков
-        self.total_players_list = []  # Список всех действующих игроков
+        self.players_list = {owner: 1 if mode == "s" else 3}  # Список всех действующих игроков
+        self.total_players_list = []  # Список всех игроков
         self.total_players = 1  # Всего игроков в игре
         self.players = 1  # Количество действующих игроков
         self.accept_players = 0  # Количество игроков подтвердивших быстрый страт игры
@@ -111,17 +111,18 @@ class Game:
         self.cost = 0  # Стоимость входа в игру
         self.total_money = 0  # Всего денег вложенных в игру
         self.difficulty = 0  # Сложность раунда
+        self.rounds_results = []  # Результаты каждого раунда (0 - проигрыш, 1 - выигрыш)
 
     async def wait_for_accept(self):
         while 1:
             try:
-                accept_click = await self.bot.wait_for("button_click", timeout=60, check=lambda c: c.channel == self.room)
-                await accept_click.respond(type=6)
-                if accept_click.author.id in self.accepts_list:
+                accept_click = await self.bot.wait_for("interaction", timeout=60, check=lambda c: c.channel == self.room)
+                await accept_click.response.pong()
+                if accept_click.user.id in self.accepts_list:
                     continue
-                self.accepts_list.append(accept_click.author.id)
+                self.accepts_list.append(accept_click.user.id)
                 self.accept_players += 1
-                await self.room.send(embed=Embed(description=f"{accept_click.author.mention} проголосовал за начало игры ({self.accept_players}/{self.players})"))
+                await self.room.send(embed=Embed(description=f"{accept_click.user.mention} проголосовал за начало игры ({self.accept_players}/{self.players})"))
                 if (100 / self.players) * self.accept_players >= 65:
                     self.ready_to_start = 1
                     await self.starting_game()
@@ -158,9 +159,8 @@ class Game:
         await self.game_process()
 
     async def game_process(self):
-        self.total_players_list = self.players_list.copy()
+        self.total_players_list = list(self.players_list.keys()).copy()
         self.active_player, ignore_players = self.get_random_player([])
-        passed_rounds = False  # служит для обновления сложности (False - означает, что предыдущий раунд был на сложности ниже раунда до этого или проигрышным, или игра только началась; True - значит, что следующий раунд будет на сложности +1)
         first, second, third = 0, 0, 0,
 
         while 1:
@@ -187,13 +187,19 @@ class Game:
                 message = await self.bot.wait_for("message", timeout=wait_time, check=lambda m: m.author.id == self.active_player and m.channel == self.room)
                 try:
                     if "*" in players_tab[message.content]:
+                        self.rounds_results.append(1)
                         await self.room.send(embed=Embed(description=f"<@{self.active_player}> передаёт картошку", color=0x21F300))
                         self.active_player = next_player
-                        if passed_rounds:
+                        if (len(self.rounds_results) + 1) % 2:
                             self.difficulty += 1
+                        chance_to_difficult_up = int(self.rounds_results.count(1) / len(self.rounds_results) * 100)
+                        if len(self.rounds_results) > 6 and randint(0, 100) <= chance_to_difficult_up:
+                            if len(self.rounds_results) > 15 and randint(0, 100) <= chance_to_difficult_up:
+                                self.difficulty += 1
+                            elif randint(0, 100) <= chance_to_difficult_up // 2:
+                                self.difficulty += 1
                         if self.players <= 4:  # Если игроков меньше 5, то включается ускорение усложнения
                             self.difficulty += randint(0, 1)
-                        passed_rounds = not passed_rounds
                         continue
                     else:
                         await self.room.send(embed=Embed(description=f"<@{self.active_player}> передаёт картошку не тому игроку и обжигает его, в ответ этот игрок избил бросающегося до смерти", color=0xF9871C))
@@ -202,7 +208,15 @@ class Game:
             except TimeoutError:
                 await self.room.send(embed=Embed(description=f"<@{self.active_player}> влюбляется в картошку, но картошка не разделяет эту любов и сжигает своего фаната", color=0xF9871C))
 
-            self.players_list.remove(self.active_player)
+            self.rounds_results.append(0)
+            self.players_list[self.active_player] -= 1
+
+            if self.players_list[self.active_player] <= 0:
+                self.players_list.pop(self.active_player)
+                if self.mode == "l":
+                    await self.room.send(embed=Embed(description=f"<@{self.active_player}> выбывает из игры", color=0xF9871C))
+            else:
+                await self.room.send(embed=Embed(description=f"у <@{self.active_player}> осталось {self.players_list[self.active_player]} ♥", color=0xF9871C))
             ignore_players = [next_player]
             self.players -= 1
 
@@ -215,7 +229,19 @@ class Game:
                 break
 
             self.active_player = next_player
-            passed_rounds = False
+            if len(self.rounds_results) > 10:
+                chance_upper_difficult = int(self.rounds_results.count(1) / len(self.rounds_results) * 100)
+                up = randint(0, 100) < chance_upper_difficult
+                if len(self.rounds_results) > 20:
+                    if chance_upper_difficult > 80 and up:
+                        self.difficulty //= 1.3
+                        continue
+                    elif chance_upper_difficult > 60 and up:
+                        self.difficulty //= 1.5
+                        continue
+                elif chance_upper_difficult > 80 and up:
+                    self.difficulty //= 1.5
+                    continue
             self.difficulty //= 2
 
         if third:
@@ -252,7 +278,7 @@ class Game:
         await self.bot.send_log(f"[GameEnd] Игра закончилась, победитель: <@{first}>", color=0xE160F9)
 
     def get_random_player(self, ignore_players: list[int]) -> tuple[int, list[int]]:
-        players = self.players_list.copy()
+        players = list(self.players_list.keys()).copy()
         if len(players) <= len(ignore_players):
             ignore_players = [ignore_players[-1]]
         for i in ignore_players:
@@ -313,36 +339,36 @@ class Game:
     async def wait_players(self):
         players_count = len(self.db.select("games", f"room_id == {self.room.id}", "players")["players"].split())
         while players_count < 10:
-            join_button_click = await self.bot.wait_for("button_click", timeout=120,
+            join_button_click = await self.bot.wait_for("interaction", timeout=120,
                                                         check=lambda c: c.channel == self.hub and c.custom_id == f"potato-{self.db.select('games', f'room_id == {self.room.id}', 'game_number')['game_number']}")
-            if await is_player_in_game(join_button_click.author.id, self.db):
+            if await is_player_in_game(join_button_click.user.id, self.db):
                 continue
-            if self.db.select("users", f"user_id == {join_button_click.author.id}", "gold")["gold"] < self.cost:
-                await join_button_click.respond(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818))
+            if self.db.select("users", f"user_id == {join_button_click.user.id}", "gold")["gold"] < self.cost:
+                await join_button_click.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephimeral=True)
                 continue
-            if join_button_click.author.id in self.players_list:
+            if join_button_click.user.id in self.players_list.keys():
                 continue
             try:
-                await join_button_click.respond(content=f"Вы подключились к игре. Перейдите в канал с игрой <#{self.room.id}>.")
+                await join_button_click.response.send_message(content=f"Вы подключились к игре. Перейдите в канал с игрой <#{self.room.id}>.", ephimeral=True)
             except NotFound:
                 continue
-            self.db.update("games", f"room_id == {self.room.id}", players=self.db.select("games", f"room_id == {self.room.id}", "players")["players"] + f" {join_button_click.author.id}")
-            self.db.update("users", f"user_id == {join_button_click.author.id}", gold=self.db.select("users", f"user_id == {join_button_click.author.id}", "gold")["gold"] - self.cost)
-            await self.room.set_permissions(join_button_click.author, read_messages=True, send_messages=True)
+            self.db.update("games", f"room_id == {self.room.id}", players=self.db.select("games", f"room_id == {self.room.id}", "players")["players"] + f" {join_button_click.user.id}")
+            self.db.update("users", f"user_id == {join_button_click.user.id}", gold=self.db.select("users", f"user_id == {join_button_click.user.id}", "gold")["gold"] - self.cost)
+            await self.room.set_permissions(join_button_click.user, read_messages=True, send_messages=True)
             if players_count == 2:
-                await self.room.send("К игре подключилось минимальное количество человек, чтобы не ждать других игроков нажмите ниже",
-                                     components=[Button(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start")]
-                                     )
+                view = View()
+                view.add_item(Button(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start"))
+                await self.room.send("К игре подключилось минимальное количество человек, чтобы не ждать других игроков нажмите ниже", view=view)
                 self.bot.loop.create_task(self.wait_for_accept())
             players_count = len(self.db.select("games", f"room_id == {self.room.id}", "players")["players"].split())
             self.players = players_count
-            self.players_list.append(join_button_click.author.id)
+            self.players_list[join_button_click.user.id] = 1 if self.mode == "s" else 3
             if (100 / self.players) * self.accept_players < 65:
                 self.ready_to_start = 0
-            await self.room.send(f"<@{join_button_click.author.id}> подключился к игре ({self.players}/10)")
+            await self.room.send(f"<@{join_button_click.user.id}> подключился к игре ({self.players}/10)")
             await self.invite_message.edit(embed=Embed(title=f"Игра \"Горячая картошка 🔥🥔\"\n",
                                                        description=f"Стоимость входа: **{self.cost}**\n"
-                                                                   f"Игроки [{self.players}/10]: {', '.join([f'<@{i}>' for i in self.players_list])}",
+                                                                   f"Игроки [{self.players}/10]: {', '.join([f'<@{i}>' for i in self.players_list.keys()])}",
                                                        color=0xEAEA04))
         self.db.update("games", f"room_id == {self.room.id}", started=1)
         self.ready_to_start = 2
