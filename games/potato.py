@@ -116,7 +116,7 @@ class Game:
     async def wait_for_accept(self):
         while 1:
             try:
-                accept_click = await self.bot.wait_for("interaction", timeout=60, check=lambda c: c.channel == self.room)
+                accept_click = await self.bot.wait_for("interaction", timeout=60, check=lambda c: c.type.name == "component" and  c.channel == self.room)
                 await accept_click.response.pong()
                 if accept_click.user.id in self.accepts_list:
                     continue
@@ -340,7 +340,7 @@ class Game:
         players_count = len(self.db.select("games", f"room_id == {self.room.id}", "players")["players"].split())
         while players_count < 10:
             join_button_click = await self.bot.wait_for("interaction", timeout=120,
-                                                        check=lambda c: c.channel == self.hub and c.custom_id == f"potato-{self.db.select('games', f'room_id == {self.room.id}', 'game_number')['game_number']}")
+                                                        check=lambda c: c.type.name == "component" and c.channel == self.hub and c.data["custom_id"] == f"potato-{self.db.select('games', f'room_id == {self.room.id}', 'game_number')['game_number']}")
             if await is_player_in_game(join_button_click.user.id, self.db):
                 continue
             if self.db.select("users", f"user_id == {join_button_click.user.id}", "gold")["gold"] < self.cost:

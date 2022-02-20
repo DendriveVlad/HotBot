@@ -39,7 +39,7 @@ async def top(channel, bot, db):
                     continue
                 except NotFound:
                     continue
-                if button_click.channel == channel:
+                if button_click.type.name == "component" and button_click.channel == channel:
                     if int(time()) - db.select("users", f"user_id == {button_click.user.id}", "last_info")["last_info"] <= 15:
                         await button_click.response.pong()
                         continue
@@ -100,7 +100,7 @@ async def top(channel, bot, db):
                             )
                             await level_up(bot, date["points"], date["points"] + plus_exp, button_click.user.id)
         finally:
-            print("Похуй+похуй, но желательно исправить эту залупу, сука блять ААААААААААААААААААААА")
+            print("Похуй+похуй")
 
 
 async def level_up(bot, old_points, new_points, member_id):

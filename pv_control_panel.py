@@ -1,31 +1,11 @@
 from asyncio.exceptions import TimeoutError
 
-import discord
-from discord_components import Button, ButtonStyle
-from discord import Embed, utils
-from discord.errors import NotFound
+import nextcord
+from nextcord import Embed, utils, ButtonStyle
+from nextcord.errors import NotFound
+from nextcord.ui import Button, View
 
 from config import ROLES
-
-
-async def member_control(text, view_permission, bot):
-    components = [
-        Button(style=ButtonStyle.green, label="Открыть канал", emoji="🌐") if not view_permission else "",
-        Button(style=ButtonStyle.red, label="Закрыть канал", emoji="⛔") if view_permission else "",
-        Button(style=ButtonStyle.red, label="Забанить участника", emoji="🚷"),
-        Button(style=ButtonStyle.green, label="Разбанить участника", emoji="🚹"),
-        Button(style=ButtonStyle.blue, label="Установить пароль", emoji="📕") if not view_permission else "",
-        Button(style=ButtonStyle.green, label="Пригласить участника", emoji="👥") if not view_permission else "",
-    ]
-    for _ in range(components.count("")):
-        components.remove("")
-    m = await text.send(embed=Embed(description="Выберите, что вы хотите сделать:", color=0xF3E400),
-                        components=components, delete_after=60.0)
-    response = await bot.wait_for("button_click", timeout=60)
-    while response.channel != text:
-        response = await bot.wait_for("button_click", timeout=60)
-    await m.delete()
-    return response
 
 
 async def voice_control_panel(text, voice, member, bot, db):
@@ -41,52 +21,57 @@ async def voice_control_panel(text, voice, member, bot, db):
     speak_permission = channel_overwrites.speak
     try:
         components = [
-            Button(style=ButtonStyle.green, label="Изменить название канала", emoji="📝") if voice.name == "Канал для " + member.name else "",
-            Button(style=ButtonStyle.green, label="Установить лимит участников", emoji="⭕"),
-            Button(style=ButtonStyle.red, label="Замутить всех участников", emoji="😶") if speak_permission or speak_permission is None else
-            Button(style=ButtonStyle.green, label="Размутить всех участников", emoji="😄"),
-            Button(style=ButtonStyle.blue, label="Замутить/размутить участника", emoji="🎤"),
-            Button(style=ButtonStyle.grey, label="Управление приватностью", emoji="🔐")
+            Button(style=ButtonStyle.green, label="Открыть канал", emoji="🌐", row=0, custom_id="open") if not view_permission else "",
+            Button(style=ButtonStyle.red, label="Закрыть канал", emoji="⛔", row=0, custom_id="close") if view_permission else "",
+            Button(style=ButtonStyle.green, label="Изменить название канала", emoji="📝", row=1, custom_id="change_name") if voice.name == "Канал для " + member.name else "",
+            Button(style=ButtonStyle.green, label="Установить лимит участников", emoji="⭕", row=1, custom_id="change_limit"),
+            Button(style=ButtonStyle.red, label="Замутить всех участников", emoji="😶", row=2, custom_id="mute_all") if speak_permission or speak_permission is None else
+            Button(style=ButtonStyle.green, label="Размутить всех участников", emoji="😄", row=2, custom_id="unmute_all"),
+            Button(style=ButtonStyle.blurple, label="Замутить/размутить участника", emoji="🎤", row=2, custom_id="mute"),
+            Button(style=ButtonStyle.red, label="Забанить участника", emoji="🚷", row=3, custom_id="ban"),
+            Button(style=ButtonStyle.green, label="Разбанить участника", emoji="🚹", row=3, custom_id="unban"),
+            Button(style=ButtonStyle.green, label="Пригласить участника", emoji="👥", row=3, custom_id="invite") if not view_permission else "",
+            Button(style=ButtonStyle.blurple, label="Установить пароль", emoji="📕", row=4, custom_id="password") if not view_permission else ""
         ]
-        for _ in range(components.count("")):
-            components.remove("")
+        view = View()
+        for button in components:
+            if button:
+                view.add_item(button)
         password = db.select('private_voices', f'channel_owner == {member.id}', 'password')['password']
         password_message = f"\n Пароль: **{password.replace('_', '*_*')}**" if password else ""
         m = await text.send(embed=Embed(description="Панель управления голосовым каналом: \n"
                                                     "Нажимайте на кнопочки и настраивайте Ваш канал под себя."
                                                     f"{password_message}"
                                                     "\nP.S. **Чтобы удалить канал нужно с него выйти**", color=0xF3E400),
-                            components=components)
-        response = await bot.wait_for("button_click", timeout=300)
-        while response.channel != text:
-            response = await bot.wait_for("button_click", timeout=300)
+                            view=view)
+        response = await bot.wait_for("interaction", timeout=300)
+        while response.type.name != "component" or response.channel != text:
+            response = await bot.wait_for("interaction", timeout=300)
         await m.delete()
         m = ""
-        if response.component.label == "Управление приватностью":
-            response = await member_control(text, view_permission, bot)
         c = Commands(text, voice, member, db)
-        match response.component.label:
-            case "Открыть канал":
+        match response.data["custom_id"]:
+            case "open":
                 await c.open()
-            case "Закрыть канал":
+            case "close":
                 await c.close()
-            case "Забанить участника":
+            case "ban":
                 await c.ban(await get_message("Упомяните участника или напишите его ник здесь:"))
-            case "Разбанить участника":
+            case "unban":
                 await c.unban(await get_message("Упомяните участника или напишите его ник здесь:"))
-            case "Изменить название канала":
+            case "change_name":
                 await c.name(await get_message("Напишите новое название канала здесь:"))
-            case "Установить пароль":
+            case "password":
                 await c.password(await get_message("Напишите новый пароль для канала здесь:"))
-            case "Пригласить участника":
+            case "invite":
                 await c.invite(await get_message("Упомяните участника или напишите его ник здесь:"))
-            case "Установить лимит участников":
+            case "change_limit":
                 await c.limit(await get_message("Напишите число, которое будет ограничением по участникам здесь:"))
-            case "Замутить/размутить участника":
+            case "mute":
                 await c.mute(await get_message("Упомяните участника или напишите его ник здесь:"))
-            case "Замутить всех участников":
+            case "mute_all":
                 await c.mute_all()
-            case "Размутить всех участников":
+            case "unmute_all":
                 await c.unmute_all()
 
         return False
@@ -215,7 +200,7 @@ class Commands:
         await self.voice.set_permissions(utils.get(self.voice.guild.roles, id=ROLES["everyone"]), speak=True, view_channel=view_channel, connect=connect)
         await self.text.send(embed=Embed(description="Все участники размучены", color=0x21F300), delete_after=5.0)
 
-    def __get_member(self, str_member: str) -> discord.Member | None:
+    def __get_member(self, str_member: str) -> nextcord.Member | None:
         if len(str_member) in [21, 22] and str_member[0:2] == "<@" and str_member[-1] == ">":
             try:
                 return self.voice.guild.get_member(int(str_member[-19:-1]))

@@ -1,8 +1,7 @@
-# import os
+import os
 from asyncio import sleep
 from time import time, ctime as ct
 
-from discord_components import DiscordComponents
 from nextcord import *
 from nextcord.ext import tasks, commands
 
@@ -11,7 +10,6 @@ from config import *
 from pv_control_panel import voice_control_panel
 from image_processing.UsersInfo import top, level_up
 from games.hub import hub
-from Admin_commands import get_command
 
 __author__ = "Vladi4ka | DendriveVlad | Deadly"
 
@@ -115,9 +113,6 @@ class Bot(commands.Bot):
                     await message.channel.send(embed=Embed(description=f"<@{message.author.id}>, канал для вас открыт", color=0x21F300), delete_after=5)
                 except TypeError:
                     return
-        # if message.channel.id == CHANNELS["Bot"] and message.content:
-        #     if message.content[0] == "/":
-        #         await self.process_commands(message)
 
     async def on_message_delete(self, message: Message):
         if message.channel.category_id == CATEGORIES["Voice channels"] or message.channel.category_id == CATEGORIES["Bot"] or message.author.id in self.spam_count:
@@ -313,7 +308,7 @@ class Bot(commands.Bot):
 intents = Intents.all()
 client = Bot()
 client.remove_command("help")
-# for file in os.listdir("./cogs"):
-#     if file.endswith(".py"):
-#         client.load_extension(f"cogs.{file[:-3]}")
+for file in os.listdir("./cogs"):
+    if file.endswith(".py"):
+        client.load_extension(f"cogs.{file[:-3]}")
 client.run(TOKEN)
