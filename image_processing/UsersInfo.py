@@ -23,7 +23,7 @@ class Click(Button):
         match interaction.data["custom_id"]:
             case "get_level":
                 self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
-                await interaction.response.defer(ephemeral=True)
+                await interaction.response.defer(ephemeral=True, with_message=True)
                 await interaction.followup.send(file=File(fp=get_rank(interaction.channel.guild, interaction.user.id, self.db)), ephemeral=True)
             case "get_award":
                 date = self.db.select("users", f"user_id == {interaction.user.id}", "points", "gold", "last_reward", "rewards_count")
@@ -96,7 +96,7 @@ async def top(channel, bot, db):
                                                            "Нажмите ниже, чтобы получить ежедневную награду \n"
                                                            "(**Если вы получаете ежедневную награду несколько раз подряд, то она возрастает**)"), view=award)
             try:
-                level = View()
+                level = View(timeout=None)
                 level.add_item(Click(style=ButtonStyle.green, label="Узнать свой уровень", emoji="🔝", custom_id="get_level", db=db, bot=bot))
                 top_message = await channel.send(file=top_image, view=level)
             except DiscordServerError:

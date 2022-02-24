@@ -63,13 +63,15 @@ class Bot(commands.Bot):
         await self.send_log(f"[MemberLeave] **{member}** покинул сервер", 0xBF1818)
 
     async def on_message(self, message: Message):
+        if message.author.id == BOT_ID:
+            return
         if type(message.channel) is DMChannel:
             await self.send_log(f"Гений на {message.author.mention} пишет мне в ЛС следующее сообщение: \n"
                                 f"**{message.content}**", color=0x766EFF)
             await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
             return
 
-        if message.author.id == BOT_ID or message.channel.id == CHANNELS["hello"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
+        if message.channel.id == CHANNELS["hello"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
             return
 
         # if message.content == "delete" and message.author.id == 280536559403532290:
