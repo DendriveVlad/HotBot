@@ -37,7 +37,7 @@ def get_top(guild, db):
             while 1:
                 try:
                     user = guild.get_member(user_level[place][0])
-                    top.paste(Image.open(BytesIO(get(str(user.avatar_url), stream=True).content)).convert("RGBA").resize((41, 41), Image.ANTIALIAS), (52, h - 40))  # картинка
+                    top.paste(Image.open(BytesIO(get(str(user.avatar.url), stream=True).content)).convert("RGBA").resize((41, 41), Image.ANTIALIAS), (52, h - 40))  # картинка
                     break
                 except UnidentifiedImageError:
                     continue
@@ -61,7 +61,7 @@ def get_top(guild, db):
     for h in range(51, 560):
         if h > 100 and h % 50 == 1 and place < 10:
             user = guild.get_member(user_gold[place][0])
-            top.paste(Image.open(BytesIO(get(str(user.avatar_url), stream=True).content)).convert("RGBA").resize((41, 41), Image.ANTIALIAS), (1510, h - 40))  # картинка
+            top.paste(Image.open(BytesIO(get(str(user.avatar.url), stream=True).content)).convert("RGBA").resize((41, 41), Image.ANTIALIAS), (1510, h - 40))  # картинка
             draw.text((1490 - name_font.getsize(str(user_gold[place][-1]))[0] - name_font.getsize(user.nick if user.nick else user.name)[0], h - 42), str(user_gold[place][-1]), font=name_font, fill=(228, 180, 30), align="right")  # gold
             draw.text(((1599 - name_font.getsize(user.nick if user.nick else user.name)[0]) - 100, h - 42), user.nick if user.nick else user.name, font=name_font, fill=user.color.to_rgb(), align="right")  # name
             draw.text((1560, h - 35), "(" + str(place + 1), font=place_font, fill=(228, 180, 30), align="right")  # rank

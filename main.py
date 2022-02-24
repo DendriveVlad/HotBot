@@ -35,8 +35,8 @@ class Bot(commands.Bot):
 
         if not self.check.is_running():
             self.check.start()
-        if not self.check_top.is_running():
-            self.check_top.start()
+        # if not self.check_top.is_running():
+        #     self.check_top.start()
         if not self.check_games.is_running():
             self.check_games.start()
 
@@ -73,11 +73,6 @@ class Bot(commands.Bot):
 
         print(message.author, ">", message.content)
 
-        if message.channel.id == CHANNELS["Admin"]:
-            await get_command(message.content.lower().split(), message.channel, db)
-            await self.send_log(f"[CommandUse] {message.author.mention} использует команду **{message.content}**")
-            return
-
         if utils.get(message.channel.guild.roles, id=ROLES["Newbie"]) in message.author.roles and len(message.author.roles) == 2:
             if "https://" in message.content:
                 link = ".".join(message.content[message.content.index("https://"):].split("/")[2].split(".")[-2:])
@@ -113,11 +108,14 @@ class Bot(commands.Bot):
                     await message.channel.send(embed=Embed(description=f"<@{message.author.id}>, канал для вас открыт", color=0x21F300), delete_after=5)
                 except TypeError:
                     return
+        # if message.channel.id == CHANNELS["Bot"] and message.content:
+        #     if message.content[0] == "/":
+        #         await self.process_commands(message)
 
     async def on_message_delete(self, message: Message):
         if message.channel.category_id == CATEGORIES["Voice channels"] or message.channel.category_id == CATEGORIES["Bot"] or message.author.id in self.spam_count:
             return
-        content = message.content if len(message.content) <= 1900 else message.content[0:1899]
+        content = message.content
         await self.send_log(f"[MessageRemove] Сообщение **{content}** от <@{message.author.id}> в канале <#{message.channel.id}> удалено", 0xBF1818)
 
     async def on_message_edit(self, before: Message, after: Message):
@@ -305,7 +303,6 @@ class Bot(commands.Bot):
             await sleep(2)
 
 
-intents = Intents.all()
 client = Bot()
 client.remove_command("help")
 for file in os.listdir("./cogs"):

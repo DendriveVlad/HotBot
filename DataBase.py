@@ -74,10 +74,6 @@ class DB:
 
 if __name__ == "__main__":
     db = DB()
-    m = []
-    for i in db.select("users"):
-        if i in m:
-            print(f"-{i['user_id']}")
-            db.delete("users", f"user_id == {i['user_id']}")
-        else:
-            m.append(i)
+    db.delete("games", "game_cost == 0")
+    print(db.select("games"))
+

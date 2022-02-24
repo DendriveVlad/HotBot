@@ -7,8 +7,8 @@ from DataBase import DB
 db = DB()
 
 
-class CMD(commands.Cog):
-    def __init__(self, client: Client):
+class Admin(commands.Cog):
+    def __init__(self, client):
         self.client = client
         self.channel = client.get_channel(CHANNELS["staff"])
         self.guild = client.get_guild(SERVER_ID)
@@ -163,4 +163,4 @@ class CMD(commands.Cog):
 
 
 def setup(client):
-    client.add_cog(CMD(client))
+    client.add_cog(Admin(client))

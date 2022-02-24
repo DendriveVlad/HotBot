@@ -10,7 +10,7 @@ def get_rank(guild, member_id, db):
     back = Image.open("/home/nehot/Bot/image_processing/exod.png")
 
     user = guild.get_member(member_id)
-    avatar = Image.open(BytesIO(get(str(user.avatar_url), stream=True).content)).convert("RGBA").resize((300, 300), Image.ANTIALIAS)
+    avatar = Image.open(BytesIO(get(str(user.avatar.url), stream=True).content)).convert("RGBA").resize((300, 300), Image.ANTIALIAS)
 
     front = Image.open("/home/nehot/Bot/image_processing/front.png")
 
