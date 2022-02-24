@@ -35,8 +35,8 @@ class Bot(commands.Bot):
 
         if not self.check.is_running():
             self.check.start()
-        # if not self.check_top.is_running():
-        #     self.check_top.start()
+        if not self.check_top.is_running():
+            self.check_top.start()
         if not self.check_games.is_running():
             self.check_games.start()
 
@@ -63,6 +63,11 @@ class Bot(commands.Bot):
         await self.send_log(f"[MemberLeave] **{member}** покинул сервер", 0xBF1818)
 
     async def on_message(self, message: Message):
+        if type(message.channel) is DMChannel:
+            await self.send_log(f"Гений на {message.author.mention} пишет мне в ЛС следующее сообщение: \n"
+                                f"**{message.content}**", color=0x766EFF)
+            await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
+            return
 
         if message.author.id == BOT_ID or message.channel.id == CHANNELS["hello"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
             return
@@ -87,7 +92,7 @@ class Bot(commands.Bot):
                     self.spam_count.remove(message.author.id)
                     return
             for word in ("серв", "айпи", "ip", "верси", "лаучер", "старт", "сао", "sao", "sword", "мастер", "регистрация", "регистрир", "регат"):
-                if word in message.content.lower() and message.channel.category_id != CATEGORIES["Bot"]:
+                if word in message.content.lower() and message.channel.category_id != CATEGORIES["Bot"] and not db.select("users", f"user_id == {message.author.id}", "notify")["notify"]:
                     await message.channel.send(f"<@{message.author.id}>, прочитай **ВНИМАТЕЛЬНО** что написано в этом канале: \n<#939193026847309864>")
                     return
 
@@ -113,12 +118,16 @@ class Bot(commands.Bot):
         #         await self.process_commands(message)
 
     async def on_message_delete(self, message: Message):
+        if type(message.channel) is DMChannel:
+            return
         if message.channel.category_id == CATEGORIES["Voice channels"] or message.channel.category_id == CATEGORIES["Bot"] or message.author.id in self.spam_count:
             return
         content = message.content
         await self.send_log(f"[MessageRemove] Сообщение **{content}** от <@{message.author.id}> в канале <#{message.channel.id}> удалено", 0xBF1818)
 
     async def on_message_edit(self, before: Message, after: Message):
+        if type(before.channel) is DMChannel:
+            return
         if before.channel.category_id == CATEGORIES["Bot"]:
             return
 
