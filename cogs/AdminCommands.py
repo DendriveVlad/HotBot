@@ -1,5 +1,6 @@
 from nextcord import slash_command, Embed, Interaction, Member, SlashOption, TextChannel
 from nextcord.ext import commands
+from nextcord.errors import NotFound
 
 from config import *
 from DataBase import DB
@@ -19,7 +20,6 @@ class Admin(commands.Cog):
         member = self.__get_member(str_member)
         if not member:
             await interaction.response.send_message(embed=Embed(title="Не верно задан пользователь", colour=0xBF1818), ephemeral=True)
-            await interaction.response.send_message(embed=Embed(title="", colour=0xBF1818), ephemeral=True)
             return
         if member.bot:
             await interaction.response.send_message(embed=Embed(title="Использование команд на ботов отключено", colour=0xBF1818), ephemeral=True)
@@ -37,8 +37,11 @@ class Admin(commands.Cog):
         if member.bot:
             await interaction.response.send_message(embed=Embed(title="Использование команд на ботов отключено", colour=0xBF1818), ephemeral=True)
             return
-        await member.unban()
-        await interaction.response.send_message(embed=Embed(title="Участник разблокирован", colour=0x21F300), ephemeral=False)
+        try:
+            await member.unban()
+            await interaction.response.send_message(embed=Embed(title="Участник разблокирован", colour=0x21F300), ephemeral=False)
+        except NotFound:
+            await interaction.response.send_message(embed=Embed(title="Участник НЕ заблокирован", colour=0xBF1818), ephemeral=False)
 
     @slash_command(name="channel-ban", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_ban(self, interaction: Interaction, str_member: str, str_channel: str):
@@ -55,7 +58,7 @@ class Admin(commands.Cog):
             await interaction.response.send_message(embed=Embed(title="Не верно задан канал", colour=0xBF1818), ephemeral=True)
             return
         await ban_channel.set_permissions(member, read_messages=False)
-        await interaction.response.send_message(embed=Embed(title=f"Участник заблокирован в канале {ban_channel.mention}", colour=0x21F300), ephemeral=False)
+        await interaction.response.send_message(embed=Embed(title=f"Участник заблокирован в канале {ban_channel}", colour=0x21F300), ephemeral=False)
 
     @slash_command(name="channel-unban", description="Разблокировать  участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_unban(self, interaction: Interaction, str_member: str, str_channel: str):
@@ -72,7 +75,7 @@ class Admin(commands.Cog):
             await interaction.response.send_message(embed=Embed(title="Не верно задан канал", colour=0xBF1818), ephemeral=True)
             return
         await ban_channel.set_permissions(member, read_messages=None)
-        await interaction.response.send_message(embed=Embed(title=f"Участник разблокирован в канале {ban_channel.mention}", colour=0x21F300), ephemeral=False)
+        await interaction.response.send_message(embed=Embed(title=f"Участник разблокирован в канале {ban_channel}", colour=0x21F300), ephemeral=False)
 
     @slash_command(name="set", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
     async def set(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
@@ -96,7 +99,7 @@ class Admin(commands.Cog):
             await interaction.response.send_message(embed=Embed(title="Не верно задано число", colour=0xBF1818), ephemeral=True)
             return
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={int(count)})")
-        await interaction.response.send_message(embed=Embed(title=f"Данные участника {member.mention} обновлены", colour=0x21F300), ephemeral=False)
+        await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
     @slash_command(name="remove", description="Удалить определённое количество золота или опыта у участника", guild_ids=[SERVER_ID])
     async def remove(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
@@ -120,7 +123,7 @@ class Admin(commands.Cog):
             await interaction.response.send_message(embed=Embed(title="Не верно задано число", colour=0xBF1818), ephemeral=True)
             return
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] - int(count)})")
-        await interaction.response.send_message(embed=Embed(title=f"Данные участника {member.mention} обновлены", colour=0x21F300), ephemeral=False)
+        await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
     @slash_command(name="add", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
     async def add(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
@@ -144,7 +147,7 @@ class Admin(commands.Cog):
             await interaction.response.send_message(embed=Embed(title="Не верно задано число", colour=0xBF1818), ephemeral=True)
             return
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] + int(count)})")
-        await interaction.response.send_message(embed=Embed(title=f"Данные участника {member.mention} обновлены", colour=0x21F300), ephemeral=False)
+        await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
     def __check_data(self, guild):
         if not self.guild:

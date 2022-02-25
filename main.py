@@ -95,6 +95,7 @@ class Bot(commands.Bot):
                     return
             for word in ("серв", "айпи", "ip", "верси", "лаучер", "старт", "сао", "sao", "sword", "мастер", "регистрация", "регистрир", "регат"):
                 if word in message.content.lower() and message.channel.category_id != CATEGORIES["Bot"] and not db.select("users", f"user_id == {message.author.id}", "notify")["notify"]:
+                    db.update("users", f"user_id == {message.author.id}", notify=1)
                     await message.channel.send(f"<@{message.author.id}>, прочитай **ВНИМАТЕЛЬНО** что написано в этом канале: \n<#939193026847309864>")
                     return
 
