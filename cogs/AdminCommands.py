@@ -16,6 +16,9 @@ class Admin(commands.Cog):
 
     @slash_command(name="ban", description="Заблокировать участника сервера", guild_ids=[SERVER_ID])
     async def ban(self, interaction: Interaction, str_member: str, reason: str):
+        if not self.__check_mod(interaction.user.roles):
+            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         if not member:
@@ -29,6 +32,9 @@ class Admin(commands.Cog):
 
     @slash_command(name="unban", description="Разблокировать участника сервера", guild_ids=[SERVER_ID])
     async def unban(self, interaction: Interaction, str_member: str):
+        if not self.__check_mod(interaction.user.roles):
+            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         if not member:
@@ -45,6 +51,9 @@ class Admin(commands.Cog):
 
     @slash_command(name="channel-ban", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_ban(self, interaction: Interaction, str_member: str, str_channel: str):
+        if not self.__check_mod(interaction.user.roles):
+            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         ban_channel = self.__get_channel(str_channel)
@@ -62,6 +71,9 @@ class Admin(commands.Cog):
 
     @slash_command(name="channel-unban", description="Разблокировать  участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_unban(self, interaction: Interaction, str_member: str, str_channel: str):
+        if not self.__check_mod(interaction.user.roles):
+            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         ban_channel = self.__get_channel(str_channel)
@@ -80,6 +92,9 @@ class Admin(commands.Cog):
     @slash_command(name="set", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
     async def set(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                   str_member: str = None, count: int = 0):
+        if not self.__check_mod(interaction.user.roles):
+            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         if not member:
@@ -104,6 +119,9 @@ class Admin(commands.Cog):
     @slash_command(name="remove", description="Удалить определённое количество золота или опыта у участника", guild_ids=[SERVER_ID])
     async def remove(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                      str_member: str = None, count: int = 0):
+        if not self.__check_mod(interaction.user.roles):
+            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         if not member:
@@ -128,6 +146,9 @@ class Admin(commands.Cog):
     @slash_command(name="add", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
     async def add(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                   str_member: str = None, count: int = 0):
+        if not self.__check_mod(interaction.user.roles):
+            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         if not member:
@@ -178,6 +199,12 @@ class Admin(commands.Cog):
             except ValueError:
                 pass
         return None
+
+    def __check_mod(self, roles) -> bool:
+        for r in roles:
+            if r.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Moder"], ROLES["Vlad"]):
+                return True
+        return False
 
 
 def setup(client):
