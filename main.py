@@ -71,7 +71,7 @@ class Bot(commands.Bot):
             await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
             return
 
-        if message.channel.id == CHANNELS["hello"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
+        if message.channel.id == CHANNELS["hello"] or message.channel.category_id == CATEGORIES["949992245606629376"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
             return
 
         # if message.content == "delete" and message.author.id == 280536559403532290:
