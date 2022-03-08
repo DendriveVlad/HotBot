@@ -102,7 +102,7 @@ async def top(channel, bot, db):
             except DiscordServerError:
                 continue
             await sleep(600)
-        finally:
+        except:
             print("Похуй+похуй")
 
 
