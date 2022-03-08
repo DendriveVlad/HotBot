@@ -10,6 +10,7 @@ from config import *
 from pv_control_panel import voice_control_panel
 from image_processing.UsersInfo import top, level_up
 from games.hub import hub
+from Mine.MineReq import requests
 
 __author__ = "Vladi4ka | DendriveVlad | Deadly"
 
@@ -35,10 +36,9 @@ class Bot(commands.Bot):
 
         if not self.check.is_running():
             self.check.start()
-        if not self.check_top.is_running():
-            self.check_top.start()
-        if not self.check_games.is_running():
-            self.check_games.start()
+        await top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db)
+        await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
+        await requests(utils.get(guild.channels, id=CHANNELS["requests"]), self)
 
         print(ct(), "Hello!")
 
@@ -92,11 +92,6 @@ class Bot(commands.Bot):
                     self.spam_count.append(message.author.id)
                     await sleep(30)
                     self.spam_count.remove(message.author.id)
-                    return
-            for word in ("серв", "айпи", "ip", "верси", "лаучер", "старт", "сао", "sao", "sword", "мастер", "регистрация", "регистрир", "регат"):
-                if word in message.content.lower() and message.channel.category_id != CATEGORIES["Bot"] and not db.select("users", f"user_id == {message.author.id}", "notify")["notify"]:
-                    db.update("users", f"user_id == {message.author.id}", notify=1)
-                    await message.channel.send(f"<@{message.author.id}>, прочитай **ВНИМАТЕЛЬНО** что написано в этом канале: \n<#939193026847309864>")
                     return
 
         if message.channel.id in LEVEL_ALLOWED_TEXT_CHANNELS:
@@ -276,43 +271,15 @@ class Bot(commands.Bot):
             if str(member.status) == "offline":
                 online_members -= 1
             elif utils.get(guild.roles, id=ROLES["Newbie"]) in member.roles:
-                con_date = db.select("users", f"user_id == {member.id}", "connection_date")
-                if con_date:
-                    if int(time()) - con_date["connection_date"] > 60 * 60 * 24 * 30 * 6:
+                member_data = db.select("users", f"user_id == {member.id}", "connection_date", "points")
+                if member_data:
+                    if int(time()) - member_data["connection_date"] > 60 * 60 * 24 * 30 * 6 and member_data["points"] >= 1000:
                         await member.remove_roles(utils.get(guild.roles, id=ROLES["Newbie"]))
                         await member.add_roles(utils.get(guild.roles, id=ROLES["Old"]))
         new_name = f"ОНЛАЙН: {online_members}/{guild.member_count}"
         if new_name == channel.name:
             return
         await channel.edit(name=f"ОНЛАЙН: {online_members}/{guild.member_count}")
-
-    @tasks.loop(minutes=30)
-    async def check_top(self):
-        guild = self.get_guild(SERVER_ID)
-        channel = utils.get(guild.channels, id=CHANNELS["Top"])
-        if self.first_start < 1:
-            await top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db)
-            self.first_start += 0.5
-        t = time()
-        while not await channel.history(limit=5).flatten():
-            if time() - t > 20:
-                await top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db)
-                return
-            await sleep(2)
-
-    @tasks.loop(minutes=30)
-    async def check_games(self):
-        guild = self.get_guild(SERVER_ID)
-        channel = utils.get(guild.channels, id=CHANNELS["Games"])
-        if self.first_start < 1:
-            await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
-            self.first_start += 0.5
-        t = time()
-        while not await channel.history(limit=5).flatten():
-            if time() - t > 20:
-                await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
-                return
-            await sleep(2)
 
 
 client = Bot()
