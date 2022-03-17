@@ -36,10 +36,9 @@ class Bot(commands.Bot):
 
         if not self.check.is_running():
             self.check.start()
-        await top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db)
         await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
         await requests(utils.get(guild.channels, id=CHANNELS["requests"]), self)
-
+        await self.loop.create_task(top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db))
         print(ct(), "Hello!")
 
     async def on_member_join(self, member: Member):
@@ -71,7 +70,7 @@ class Bot(commands.Bot):
             await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
             return
 
-        if message.channel.id == CHANNELS["hello"] or message.channel.category_id == CATEGORIES["949992245606629376"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
+        if message.channel.id == CHANNELS["hello"] or message.channel.category_id == CATEGORIES["Minecraft"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
             return
 
         # if message.content == "delete" and message.author.id == 280536559403532290:
@@ -118,7 +117,7 @@ class Bot(commands.Bot):
     async def on_message_delete(self, message: Message):
         if type(message.channel) is DMChannel:
             return
-        if message.channel.category_id == CATEGORIES["Voice channels"] or message.channel.category_id == CATEGORIES["Bot"] or message.author.id in self.spam_count:
+        if message.channel.category_id == CATEGORIES["Voice channels"] or message.channel.category_id == CATEGORIES["Minecraft"] or message.channel.category_id == CATEGORIES["Bot"] or message.author.id in self.spam_count:
             return
         content = message.content
         await self.send_log(f"[MessageRemove] Сообщение **{content}** от <@{message.author.id}> в канале <#{message.channel.id}> удалено", 0xBF1818)

@@ -15,8 +15,8 @@ class CButton(Button):
     async def callback(self, interaction: Interaction):
         m = await interaction.channel.send(f"{interaction.user.mention} перейдите в созданный **Поток**")
         thread = await interaction.channel.create_thread(name=f"{self.label}-{interaction.user}", message=m)
+        await interaction.response.send_message(f"Перейдите в ветку {thread.mention} и ответьте на вопросы", ephemeral=True)
         await m.delete()
-        await interaction.response.send_message("Перейдите в ветку и ответьте на вопросы", ephemeral=True)
         self.disabled = True
         self.view.stop()
         await threadEngine(thread, interaction.user, self.bot)
@@ -56,7 +56,7 @@ async def threadEngine(thread: Thread, member: Member, bot):
     rtype = thread.name.split("-")[0]
     try:
         m = await thread.send(f"Cкажите, как Вас зовут?")
-        text = await bot.wait_for("message", timeout=30, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
+        text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
 
         acceptation = await confirm(thread, member, bot, text)
         if acceptation:
@@ -156,7 +156,7 @@ async def threadEngine(thread: Thread, member: Member, bot):
                 m = await thread.send("Чем бы Вы хотели заниматься на проекте?")
             text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
 
-            acceptation = await confirm(thread, member, bot, text)
+            acceptation = await confirm(thread, member, bot, text, last=True if rtype not in ("Дизайн", "Квесты") else False)
             if acceptation:
                 text = acceptation
             await m.delete()
@@ -168,17 +168,15 @@ async def threadEngine(thread: Thread, member: Member, bot):
             m = await thread.send("Скиньте примеры своих работ (Хотя бы 3 скриншота)")
             text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
 
-            acceptation = await confirm(thread, member, bot, text)
+            acceptation = await confirm(thread, member, bot, text, last=True)
             if acceptation:
                 text = acceptation
             await m.delete()
-            await text.delete()
-            works = text.attachments
         if rtype == "Квесты":
             m = await thread.send("Какие из популярных аниме Вы знаете?")
             text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
 
-            acceptation = await confirm(thread, member, bot, text)
+            acceptation = await confirm(thread, member, bot, text, last=True)
             if acceptation:
                 text = acceptation
             await text.delete()
@@ -195,8 +193,6 @@ async def threadEngine(thread: Thread, member: Member, bot):
         info.append(f"**Известные аниме:** {works}")
 
     await thread.send(f"{member.mention} создал заявку", embed=Embed(title=rtype, description="\n".join(info)))
-    if works and rtype != "Квесты":
-        await thread.send("**Примеры работ:** \n" + "\n".join(works))
 
     admin = utils.get(thread.guild.channels, id=CHANNELS["admin_requests"])
     await admin.send(f"@everyone Поступила новая заявка: {thread.mention}")
@@ -220,4 +216,4 @@ async def requests(channel, bot):
     await channel.purge()
     view = CreateRequest(channel, bot)
     await channel.send(embed=Embed(description="Хотите стать частью нашего замечательного Minecraft-Проекта?\n"
-                                               "Значит Вам сюда!", color=0x1EE575), view=view)
+                                               "Значит Вам сюда! (от 13 лет)", color=0x1EE575), view=view)
