@@ -89,7 +89,7 @@ class ConnectionButton(Button):
                 return
             self.game.db.update("games", f"room_id == {self.game.room.id}", players=self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"] + f" {interaction.user.id}")
             self.game.db.update("users", f"user_id == {interaction.user.id}", gold=self.game.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] - self.game.cost)
-            await self.game.room.set_permissions(interaction.user, read_messages=True, send_messages=True)
+            await self.game.room.set_permissions(interaction.user, read_messages=True)
             if players_count == 2:
                 view = View()
                 view.add_item(Button(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start"))
@@ -311,7 +311,7 @@ class Game:
         for p in self.total_players_list:
             if p in (third, second, first):
                 continue
-            self.db.update("users", f"user_id == {first}", points=self.db.select("users", f"user_id == {first}", "points")["points"] + 25)
+            self.db.update("users", f"user_id == {p}", points=self.db.select("users", f"user_id == {p}", "points")["points"] + 25)
         await self.room.send("", embed=Embed(title="Игра окончена", description=f"1 место: <@{first}>\n"
                                                                                 f"+{first_place[0]} опыта, +{int(first_place[-1])} {'золото' if str(first_place[-1])[-1] == '1' else 'золота'}\n\n" +
                                                                                 (f"2 место: <@{second}>\n"
