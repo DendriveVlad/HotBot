@@ -1,14 +1,12 @@
-import string
 from asyncio.exceptions import TimeoutError
 from asyncio import sleep
-from random import choice, sample, randint, shuffle
+from random import choice, randint, shuffle
 
 from nextcord.errors import NotFound
 from nextcord import Embed, ButtonStyle, Interaction, Message, Member, TextChannel, PermissionOverwrite
 from nextcord.ui import View, Button, button
 
-import DataBase
-from config import BOT_ID, SERVER_ID
+from config import SERVER_ID
 
 
 async def is_player_in_game(member, db):
@@ -34,7 +32,7 @@ async def mafia_game(room, owner, bot, db, game_hub):
             await room.send(f"<@{owner}>, игра создана. Осталось только её настроить.\n"
                             f"Напишите стоимость для входа в игру (0 - {member_gold_maximum}):")
         else:
-            await room.send(f"<@{owner}>, ждём игроков. (1/10)")
+            await room.send(f"<@{owner}>, ждём игроков. (1/15)")
 
         while member_gold_maximum:
             try:
@@ -46,14 +44,14 @@ async def mafia_game(room, owner, bot, db, game_hub):
                     continue
                 db.update("games", f"room_id == {room.id}", game_cost=game.cost)
                 await room.purge()
-                await room.send(f"Настройка завершена, ждём игроков. (1/10)")
+                await room.send(f"Настройка завершена, ждём игроков. (1/15)")
                 db.update("users", f"user_id == {owner}", gold=db.select("users", f"user_id == {owner}", "gold")["gold"] - game.cost)
                 break
             except ValueError:
                 await room.purge()
                 await room.send(f"Напишите стоимость для входа в игру (в диапазоне 0 - {member_gold_maximum}):")
 
-        await room.set_permissions(owner, send_message=None)
+        await room.set_permissions(game.get_member(owner), send_messages=None)
 
     except TimeoutError:
         await room.purge()
@@ -66,8 +64,27 @@ async def mafia_game(room, owner, bot, db, game_hub):
     view = Connection(game)
     game.invite_message = await game_hub.send(embed=Embed(title=f"Игра \"Мафия Lite🤵🕵️‍♂️\"\n",
                                                           description=f"Стоимость входа: **{game.cost}**\n"
-                                                                      f"Игроки [{game.players}/10]: <@{owner}>",
+                                                                      f"Игроки [{game.players}/15]: <@{owner}>",
                                                           color=0xEAEA04), view=view)
+
+
+class StartGame(Button):
+    def __init__(self, game_class):
+        super().__init__(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start")
+        self.game = game_class
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.pong()
+        if interaction.user.id in self.game.accepts_list:
+            return
+        self.game.accepts_list.append(interaction.user.id)
+        self.game.accept_players += 1
+        await self.game.room.send(embed=Embed(description=f"{interaction.user.mention} проголосовал за начало игры ({self.game.accept_players}/{self.game.players})"))
+        if self.game.ready_to_start:
+            return
+        if (100 / self.game.players) * self.game.accept_players >= 65:
+            self.game.ready_to_start = 1
+            await self.game.starting_game()
 
 
 class ConnectionButton(Button):
@@ -85,28 +102,27 @@ class ConnectionButton(Button):
                 return
             if interaction.user.id in self.game.players_list.keys():
                 return
+            self.game.db.update("games", f"room_id == {self.game.room.id}", players=self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"] + f" {interaction.user.id}")
+            self.game.db.update("users", f"user_id == {interaction.user.id}", gold=self.game.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] - self.game.cost)
+            await self.game.room.set_permissions(interaction.user, read_messages=True)
+            if players_count == 5:
+                view = View()
+                view.add_item(StartGame(self.game))
+                await self.game.room.send("К игре подключилось минимальное количество человек, чтобы не ждать других игроков нажмите ниже", view=view)
+            players_count = len(self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"].split())
+            self.game.players = players_count
+            await self.game.room.send(f"<@{interaction.user.id}> подключился к игре ({self.game.players}/15)")
             try:
                 await interaction.response.send_message(content=f"Вы подключились к игре. Перейдите в канал с игрой <#{self.game.room.id}>.", ephemeral=True)
             except NotFound:
                 return
-            self.game.db.update("games", f"room_id == {self.game.room.id}", players=self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"] + f" {interaction.user.id}")
-            self.game.db.update("users", f"user_id == {interaction.user.id}", gold=self.game.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] - self.game.cost)
-            await self.game.room.set_permissions(interaction.user, read_messages=True)
-            if players_count == 2:
-                view = View()
-                view.add_item(Button(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start"))
-                await self.game.room.send("К игре подключилось минимальное количество человек, чтобы не ждать других игроков нажмите ниже", view=view)
-                self.game.bot.loop.create_task(self.game.wait_for_accept())
-            players_count = len(self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"].split())
-            self.game.players = players_count
             self.game.players_list[interaction.user.id] = ""
             self.game.active_players_list.append(interaction.user.id)
             if (100 / self.game.players) * self.game.accept_players < 65:
                 self.game.ready_to_start = 0
-            await self.game.room.send(f"<@{interaction.user.id}> подключился к игре ({self.game.players}/10)")
             await self.game.invite_message.edit(embed=Embed(title=f"Игра \"Мафия Lite🤵🕵️‍♂️\"\n",
                                                             description=f"Стоимость входа: **{self.game.cost}**\n"
-                                                                        f"Игроки [{self.game.players}/10]: {', '.join([f'<@{i}>' for i in self.game.players_list.keys()])}",
+                                                                        f"Игроки [{self.game.players}/15]: {', '.join([f'<@{i}>' for i in self.game.players_list.keys()])}",
                                                             color=0xEAEA04))
         else:
             self.game.db.update("games", f"room_id == {self.game.room.id}", started=1)
@@ -146,14 +162,14 @@ class ShowRoles(View):
 
     @button(style=ButtonStyle.green, label="Узнать свою роль", emoji="✉", row=0)
     async def get_role(self, button, interaction: Interaction):
-        interaction.response.send_message(embed=Embed(title=f"Вы {self.game.players_list[interaction.user.id]}",
-                                                      description=f"{'Для общения с остальными членами Мафии используйте канал ' + self.game.mafia_room.mention if self.game.players_list[interaction.user.id] == 'Мафия' and self.game.mafia_room else ''}",
-                                                      color=0xD8301F if self.game.players_list[interaction.user.id] in ("Мафия", "Маньяк") else 0x1EC623), ephemeral=True)
+        await interaction.response.send_message(embed=Embed(title=f"Вы {self.game.players_list[interaction.user.id]}",
+                                                            description=f"{'Для общения с остальными членами Мафии используйте канал ' + self.game.mafia_room.mention if self.game.players_list[interaction.user.id] == 'Мафия' and self.game.mafia_room else ''}",
+                                                            color=0xD8301F if self.game.players_list[interaction.user.id] in ("Мафия", "Маньяк") else 0x1EC623), ephemeral=True)
 
 
 class GamePassTurn(View):
     def __init__(self, member):
-        super().__init__(timeout=30)
+        super().__init__(timeout=60)
         self.member = member
         self.turn = 0
 
@@ -170,7 +186,7 @@ class GamePlayersVoting(View):
         super().__init__(timeout=60)
         for p in players:
             game_class.voting[p] = list()
-            self.add_item(GamePlayerButton(game_class.__get_member(p)))
+            self.add_item(GamePlayerButton(game_class.get_member(p)))
         self.game = game_class
         self.mode = mode
         self.chosen = None if mode != "Мафия" else []
@@ -178,52 +194,56 @@ class GamePlayersVoting(View):
             self.mafia = 3 if game_class.players > 11 else 2 if game_class.players > 7 else 1
         self.vote_count = 0
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        for v in self.game.voting:
-            if interaction.user.id in v:
-                await interaction.response.pong()
-                return
-        if self.mode != "voting":
-            if self.game.players_list[interaction.user.id] != self.mode:
-                return
-            if self.mode == "Мафия":
-                self.chosen.append(interaction.data["custom_id"])
-                if self.vote_count + 1 == self.mafia:
-                    self.stop()
-                    return
-            else:
-                if self.mode == "Доктор":
-                    if self.game.players_list[interaction.user.id] == self.mode:
-                        if self.game.self_heal:
-                            await interaction.response.send_message(embed=Embed(description="Вы не можете излечить себя ещё раз", color=0xBF1818))
-                            return
-                        self.game.self_heal = True
-                self.chosen = interaction.data["custom_id"]
-                if self.mode == "Комиссар":
-                    if self.chosen in self.game.checked:
-                        await interaction.response.send_message(embed=Embed(description="Вы уже проверили этого игрока", color=0xBF1818))
-                        return
-                    if self.game.players_list[interaction.user.id] == "Мафия":
-                        interaction.response.send_message(embed=Embed(title=f"Мафия" if self.game.players_list[interaction.user.id] == 'Мафия' else "Мирный житель",
-                                                                      description=f"<@{interaction.user.id}>",
-                                                                      color=0xD8301F if self.game.players_list[interaction.user.id] == 'Мафия' else 0x1EC623), ephemeral=True)
-                self.stop()
-                return
-        elif len(self.game.active_players_list) == self.vote_count + 1:
-            self.stop()
-            return
-        if "-" in self.game.players_list[interaction.user.id]:
-            return
-        self.game.voting[interaction.data["custom_id"]].append(interaction.user.id)
-        if self.mode == "voting":
-            await interaction.response.send_message(embed=Embed(description=f"{interaction.user.mention} проголосовал против <@{interaction.data['custom_id']}>", color=0x1988B8))
-        await interaction.response.pong()
-        self.vote_count += 1
-
 
 class GamePlayerButton(Button):
     def __init__(self, member):
-        super().__init__(style=ButtonStyle.green, label=member.nick if member.nick else member.name, custom_id=member.id)
+        super().__init__(style=ButtonStyle.green, label=member.nick if member.nick else member.name)
+        self.member = member.id
+
+    async def callback(self, interaction: Interaction):
+        for v in list(self.view.game.voting.values()):
+            if interaction.user.id in v:
+                await interaction.response.pong()
+                return
+        if self.view.mode != "voting":
+            if self.view.game.players_list[interaction.user.id] != self.view.mode:
+                await interaction.response.pong()
+                return
+            if self.view.mode == "Мафия":
+                self.view.chosen.append(self.member)
+                if self.view.vote_count + 1 == self.view.mafia:
+                    self.view.stop()
+                    await interaction.response.pong()
+                    return
+            else:
+                if self.view.mode == "Доктор":
+                    if self.view.game.players_list[interaction.user.id] == self.view.mode:
+                        if self.view.game.self_heal:
+                            await interaction.response.send_message(embed=Embed(description="Вы не можете излечить себя ещё раз", color=0xBF1818))
+                            return
+                        self.view.game.self_heal = True
+                self.view.chosen = self.member
+                if self.view.mode == "Комиссар":
+                    if self.view.chosen in self.view.game.checked:
+                        await interaction.response.send_message(embed=Embed(description="Вы уже проверили этого игрока", color=0xBF1818))
+                        return
+                    await interaction.response.send_message(embed=Embed(title=f"Мафия" if self.view.game.players_list[self.member] == 'Мафия' else "Мирный житель",
+                                                                        description=f"<@{self.member}>",
+                                                                        color=0xD8301F if self.view.game.players_list[self.member] == 'Мафия' else 0x1EC623), ephemeral=True)
+                self.view.stop()
+                return
+        elif len(self.view.game.active_players_list) == self.view.vote_count + 1:
+            self.view.stop()
+            return
+        if "-" in self.view.game.players_list[interaction.user.id]:
+            return
+        self.view.game.voting[self.member].append(interaction.user.id)
+        if self.view.mode == "voting":
+            await interaction.response.send_message(embed=Embed(description=f"{interaction.user.mention} проголосовал против <@{self.member}>", color=0x1988B8))
+            self.view.vote_count += 1
+            return
+        await interaction.response.pong()
+        self.view.vote_count += 1
 
 
 class Game:
@@ -242,39 +262,12 @@ class Game:
         self.voting = {}
         self.self_heal = False  # Для доктора
         self.checked = []  # Для комиссара
-        self.win = None
-        # self.total_players = 1  # Всего игроков в игре
+        self.win = None  # Кто победил
         self.players = 1  # Количество действующих игроков
         self.accept_players = 0  # Количество игроков подтвердивших быстрый страт игры
         self.accepts_list = []  # Список игроков подтвердивших быстрый страт игры
-        # self.active_player = 0  # Игрок, у которого в данный момент картошка
         self.cost = 0  # Стоимость входа в игру
         self.total_money = 0  # Всего денег вложенных в игру
-        # self.difficulty = 0  # Сложность раунда
-        # self.rounds_results = []  # Результаты каждого раунда (0 - проигрыш, 1 - выигрыш)
-
-    async def wait_for_accept(self):
-        while 1:
-            if self.ready_to_start == 2:
-                return
-            try:
-                accept_click = await self.bot.wait_for("interaction", timeout=60, check=lambda c: c.type.name == "component" and c.channel == self.room)
-                await accept_click.response.pong()
-                if accept_click.user.id in self.accepts_list:
-                    continue
-                self.accepts_list.append(accept_click.user.id)
-                self.accept_players += 1
-                await self.room.send(embed=Embed(description=f"{accept_click.user.mention} проголосовал за начало игры ({self.accept_players}/{self.players})"))
-                if (100 / self.players) * self.accept_players >= 65:
-                    self.ready_to_start = 1
-                    await self.starting_game()
-            except TimeoutError:
-                if self.ready_to_start == 2:
-                    return
-            except NotFound:
-                return
-            except AttributeError:
-                return
 
     async def starting_game(self):
         if self.ready_to_start == 2:
@@ -301,29 +294,37 @@ class Game:
 
     async def game_process(self):
         m: Message = await self.room.send("Распределение ролей...")
-        roles = ["Мафия", "Маньяк", "Доктор", "Комиссар", "Мирный житель"]
+        roles = ["Мафия", "Маньяк", "Доктор", "Комиссар"]
         shuffle(roles)
         if self.players < 10:
             roles.remove("Маньяк")
 
         if self.players > 7:
             overwrites = {
-                self.bot.get_guild(SERVER_ID).default_role: PermissionOverwrite(view_channel=False, send_message=True)
+                self.bot.get_guild(SERVER_ID).default_role: PermissionOverwrite(view_channel=False, send_messages=True)
             }
             self.mafia_room = await self.bot.get_guild(SERVER_ID).create_text_channel(f"мафия", category=self.room.category, overwrites=overwrites)
-        for player in self.players_list.keys():
+        shuffle(self.active_players_list)
+        for player in self.active_players_list:
+            if not roles:
+                self.players_list[player] = "Мирный житель"
+                continue
             role = choice(roles)
             if role == "Комиссар":
                 self.checked.append(player)
-            if role in ("Маньяк", "Доктор", "Комиссар"):
                 roles.remove(role)
+
             elif role == "Мафия":
                 if self.players > 11 and list(self.players_list.values()).count("Мафия") == 2:
                     roles.remove(role)
                 elif self.players > 7 and list(self.players_list.values()).count("Мафия"):
                     roles.remove(role)
+                else:
+                    roles.remove(role)
                 if self.mafia_room:
-                    await self.mafia_room.set_permissions(self.__get_member(player), view_channel=True)
+                    await self.mafia_room.set_permissions(self.get_member(player), view_channel=True)
+            else:
+                roles.remove(role)
             self.players_list[player] = role
 
         view = ShowRoles(self)
@@ -345,8 +346,8 @@ class Game:
             else:
                 await self.room.send("У каждого игрока будет по 60 секунд на то, чтобы представить себя")
             for p in self.active_players_list:
-                player = self.__get_member(p)
-                await self.room.set_permissions(self.__get_member(player), send_message=True)
+                player = self.get_member(p)
+                await self.room.set_permissions(player, view_channel=True, send_messages=True)
                 view = GamePassTurn(p)
                 pm: Message = await self.room.send(f"<@{p}>, у Вас 60 секунд.", view=view)
                 for i in range(59, 0, -1):
@@ -355,21 +356,22 @@ class Game:
                         break
                     await pm.edit(content=f"<@{p}>, у Вас {i} секунд{('', 'а', 'ы')[1 if i % 10 == 1 and i != 11 else 2 if 2 <= i % 10 <= 4 and i // 10 != 1 else 0]}.")
                 await pm.delete()
-                await self.room.set_permissions(self.__get_member(player), send_message=None)
+                await self.room.set_permissions(player, view_channel=True, send_messages=None)
 
             if round:
-                await self.room.set_permissions(self.bot.get_guild(SERVER_ID).default_role, send_message=None)
+                await self.room.set_permissions(self.bot.get_guild(SERVER_ID).default_role, view_channel=True, send_messages=None)
                 await self.room.send("Всеобщее обсуждение на 60 секунд")
                 await sleep(50)
                 await self.room.send("Осталось 10 секунд")
                 await sleep(10)
-                await self.room.set_permissions(self.bot.get_guild(SERVER_ID).default_role, send_message=False)
+                await self.room.set_permissions(self.bot.get_guild(SERVER_ID).default_role, view_channel=True, send_messages=False)
 
                 view = GamePlayersVoting(self, "voting", self.active_players_list)
                 await self.room.send("Время вышло, начинается голосование за исключение игрока", view=view)
                 await view.wait()
-                max_votes = max(self.voting.values(), key=len)
-                for p, v in self.voting.items():
+                max_votes = len(max(self.voting.values(), key=len))
+                pv = self.voting.items()
+                for p, v in pv:
                     if len(v) < max_votes:
                         self.voting.pop(p)
 
@@ -377,8 +379,8 @@ class Game:
                     await self.room.send(f"По итогам голосования с одинаковым количеством голосов остались {len(self.voting)} {'игрока' if len(self.voting) < 5 else 'игроков'}\n"
                                          f"Каждый из этих игроков получит по 60 секунд на оправдание, после чего пройдёт повторное голосование.")
                     for p in self.voting.keys():
-                        player = self.__get_member(p)
-                        await self.room.set_permissions(self.__get_member(player), send_message=True)
+                        player = self.get_member(p)
+                        await self.room.set_permissions(player, view_channel=True, send_messages=True)
                         view = GamePassTurn(p)
                         pm: Message = await self.room.send(f"<@{p}>, у Вас 60 секунд.", view=view)
                         for i in range(59, 0, -1):
@@ -387,18 +389,19 @@ class Game:
                                 break
                             await pm.edit(content=f"<@{p}>, у Вас {i} секунд{('', 'а', 'ы')[1 if i % 10 == 1 and i != 11 else 2 if 2 <= i % 10 <= 4 and i // 10 != 1 else 0]}.")
                         await pm.delete()
-                        await self.room.set_permissions(self.__get_member(player), send_message=None)
+                        await self.room.set_permissions(player, view_channel=True, send_messages=None)
                     view = GamePlayersVoting(self, "voting", list(self.voting.keys()))
                     await self.room.send("Начинается второй этап голосования за исключение игрока. Если здесь игроки не будут однозначны, то будет выбран случайный игрок.", view=view)
                     await view.wait()
-                    max_votes = max(self.voting.values(), key=len)
-                    for p, v in self.voting.items():
+                    max_votes = len(max(self.voting.values(), key=len))
+                    pv = self.voting.items()
+                    for p, v in pv:
                         if len(v) < max_votes:
                             self.voting.pop(p)
                     while len(self.voting) != 1:
                         self.voting.pop(choice(list(self.voting.keys())))
                 kicked_player = list(self.voting.keys())[0]
-                self.__removePlayer(kicked_player)
+                await self.__removePlayer(kicked_player)
                 await self.room.send(f"По итогам голосования был исключён игрок <@{kicked_player}>")
                 if self.__checkEndGame():
                     break
@@ -406,23 +409,23 @@ class Game:
             await self.room.send("Собрание заканчивается, игроки расходятся по домам и начинается ночь.")
             await sleep(2)
 
-            view = GamePlayersVoting(self, "Мафия", self.active_players_list)
-            await self.room.send("Просыпается **мафия** и думает кого она убьёт этой ночью...", view=view)
+            viewv = GamePlayersVoting(self, "Мафия", self.active_players_list)
+            await self.room.send("Просыпается **мафия** и думает кого она убьёт этой ночью...", view=viewv)
             if "Мафия" in list(self.players_list.values()):
-                await view.wait()
+                await viewv.wait()
 
-                if len(set(view.chosen)) == len(view.chosen):
-                    if len(view.chosen):
-                        killed = view.chosen[0]
+                if len(set(viewv.chosen)) == len(viewv.chosen):
+                    if len(viewv.chosen):
+                        killed = viewv.chosen[0]
                     else:
                         while len(self.voting) != 1:
                             self.voting.pop(choice(list(self.voting.keys())))
                         killed = list(self.voting.keys())[0]
                 else:
-                    if view.chosen[0] in view.chosen[1:]:
-                        killed = view.chosen[0]
+                    if viewv.chosen[0] in viewv.chosen[1:]:
+                        killed = viewv.chosen[0]
                     else:
-                        killed = view.chosen[1]
+                        killed = viewv.chosen[1]
             else:
                 await sleep(randint(10, 50))
 
@@ -469,15 +472,21 @@ class Game:
             await self.room.send("**Комиссар** сделал выбор. **Комиссар** засыпает.")
             await sleep(2)
 
-            if killed == murdered:
+            if not murdered:
+                if killed == cured:
+                    dead = None
+                else:
+                    dead = f"<@{killed}>."
+                    await self.__removePlayer(killed)
+            elif killed == murdered:
                 dead = f"<@{killed}>."
-                self.__removePlayer(killed)
+                await self.__removePlayer(killed)
             elif killed == cured != murdered:
                 dead = f"<@{murdered}>."
-                self.__removePlayer(murdered)
+                await self.__removePlayer(murdered)
             elif killed != cured:
                 dead = f"<@{killed}> и <@{murdered}>."
-                self.__removePlayer(killed, murdered)
+                await self.__removePlayer(killed, murdered)
             else:
                 dead = None
 
@@ -486,8 +495,8 @@ class Game:
             if self.__checkEndGame():
                 break
             round += 1
-
-        await self.mafia_room.delete()
+        if self.mafia_room:
+            await self.mafia_room.delete()
 
         roles = {"Мафия": [],
                  "Маньяк": [],
@@ -495,19 +504,22 @@ class Game:
                  "Доктор": [],
                  "Мирные жители": []}
         wins = []
-        for p, r in self.players_list:
-            roles[r.replace("-", "")].append(f"<@{p}>")
-            if self.win == "Маньяк" == r:
+        for p, r in self.players_list.items():
+            rol = r.replace("-", "")
+            if rol == "Мирный житель":
+                rol = "Мирные жители"
+            roles[rol].append(f"<@{p}>")
+            if self.win == "Маньяк" == rol:
                 wins.append(p)
-            elif self.win == "Мафия" and p in roles[self.win]:
+            elif self.win == "Мафия" == rol:
                 wins.append(p)
             else:
                 wins.append(p)
         fm = ""
-        for r, p in roles:
+        for r, p in roles.items():
             fm += f"**{r}**: {', '.join(p)}\n"
 
-        gold = self.total_money // len(wins)
+        gold = int(self.total_money // len(wins))
         award = ""
         for p in list(self.players_list.keys()):
             points = 50
@@ -530,12 +542,12 @@ class Game:
         await self.room.delete()
         await self.bot.send_log(f"[GameEnd] Игра закончилась, победитель(и): {'>, <@'.join(wins)}", color=0xE160F9)
 
-    def __removePlayer(self, *players):
+    async def __removePlayer(self, *players):
         for player in players:
             self.active_players_list.remove(player)
             self.players_list[player] = "-" + self.players_list[player]
             if self.players_list[player] == "Мафия":
-                await self.mafia_room.set_permissions(self.__get_member(player), view_channel=False)
+                await self.mafia_room.set_permissions(self.get_member(player), view_channel=True, send_messages=False)
 
     def __checkEndGame(self) -> bool:
         active_roles = list(self.players_list.values())
@@ -555,5 +567,5 @@ class Game:
             return True
         return False
 
-    def __get_member(self, member_id: int) -> Member | None:
+    def get_member(self, member_id: int) -> Member | None:
         return self.bot.get_guild(SERVER_ID).get_member(member_id)

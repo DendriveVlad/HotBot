@@ -4,7 +4,7 @@ from asyncio import sleep
 from random import choice, sample, randint, shuffle
 
 from nextcord.errors import NotFound
-from nextcord import Embed, ButtonStyle
+from nextcord import Embed, ButtonStyle, Interaction
 from nextcord.ui import View, Button
 
 from config import BOT_ID
@@ -68,6 +68,25 @@ async def potato_game(room, owner, bot, db, game_hub, gamemode):
     bot.loop.create_task(game.player_messages())
 
 
+class StartGame(Button):
+    def __init__(self, game_class):
+        super().__init__(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start")
+        self.game = game_class
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.pong()
+        if interaction.user.id in self.game.accepts_list:
+            return
+        self.game.accepts_list.append(interaction.user.id)
+        self.game.accept_players += 1
+        await self.game.room.send(embed=Embed(description=f"{interaction.user.mention} проголосовал за начало игры ({self.game.accept_players}/{self.game.players})"))
+        if self.game.ready_to_start:
+            return
+        if (100 / self.game.players) * self.game.accept_players >= 65:
+            self.game.ready_to_start = 1
+            await self.game.starting_game()
+
+
 class ConnectionButton(Button):
     def __init__(self, game_class):
         self.game = game_class
@@ -92,9 +111,8 @@ class ConnectionButton(Button):
             await self.game.room.set_permissions(interaction.user, read_messages=True)
             if players_count == 2:
                 view = View()
-                view.add_item(Button(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start"))
+                view.add_item(StartGame(self.game))
                 await self.game.room.send("К игре подключилось минимальное количество человек, чтобы не ждать других игроков нажмите ниже", view=view)
-                self.game.bot.loop.create_task(self.game.wait_for_accept())
             players_count = len(self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"].split())
             self.game.players = players_count
             self.game.players_list[interaction.user.id] = 1 if self.game.mode == "s" else 3
@@ -158,29 +176,6 @@ class Game:
         self.total_money = 0  # Всего денег вложенных в игру
         self.difficulty = 0  # Сложность раунда
         self.rounds_results = []  # Результаты каждого раунда (0 - проигрыш, 1 - выигрыш)
-
-    async def wait_for_accept(self):
-        while 1:
-            if self.ready_to_start == 2:
-                return
-            try:
-                accept_click = await self.bot.wait_for("interaction", timeout=60, check=lambda c: c.type.name == "component" and c.channel == self.room)
-                await accept_click.response.pong()
-                if accept_click.user.id in self.accepts_list:
-                    continue
-                self.accepts_list.append(accept_click.user.id)
-                self.accept_players += 1
-                await self.room.send(embed=Embed(description=f"{accept_click.user.mention} проголосовал за начало игры ({self.accept_players}/{self.players})"))
-                if (100 / self.players) * self.accept_players >= 65:
-                    self.ready_to_start = 1
-                    await self.starting_game()
-            except TimeoutError:
-                if self.ready_to_start == 2:
-                    return
-            except NotFound:
-                return
-            except AttributeError:
-                return
 
     async def starting_game(self):
         if self.ready_to_start == 2:

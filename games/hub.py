@@ -34,7 +34,7 @@ class ChoiceGame(View):
         await self.create_room("potato", interaction)
 
     @button(style=ButtonStyle.green, label="Мафия Lite", emoji="🤵", row=1, custom_id="mafia")
-    async def potato_long(self, button, interaction: Interaction):
+    async def mafia(self, button, interaction: Interaction):
         await self.create_room("mafia", interaction)
 
     @button(style=ButtonStyle.grey, label="Новые игры появятся позже...", emoji="🔃", row=2)
@@ -51,8 +51,8 @@ class ChoiceGame(View):
             return
 
         overwrites = {
-            interaction.channel.guild.default_role: PermissionOverwrite(view_channel=False, send_message=True if game == "potato" else False),
-            interaction.user: PermissionOverwrite(view_channel=True, send_message=True)
+            interaction.channel.guild.default_role: PermissionOverwrite(view_channel=False, send_messages=True if game == "potato" else False),
+            interaction.user: PermissionOverwrite(view_channel=True, send_messages=True)
         }
         g = self.db.select('games', f'game_name == "{game}"')
         if g:
