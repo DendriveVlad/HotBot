@@ -67,7 +67,8 @@ class Bot(commands.Bot):
         if type(message.channel) is DMChannel:
             await self.send_log(f"Гений на {message.author.mention} пишет мне в ЛС следующее сообщение: \n"
                                 f"**{message.content}**", color=0x766EFF)
-            await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
+            if len(message.channel.history(limit=3)) < 3:
+                await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
             return
 
         if message.channel.id == CHANNELS["hello"] or message.channel.category_id == CATEGORIES["Minecraft"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
@@ -110,9 +111,6 @@ class Bot(commands.Bot):
                     await message.channel.send(embed=Embed(description=f"<@{message.author.id}>, канал для вас открыт", color=0x21F300), delete_after=5)
                 except TypeError:
                     return
-        # if message.channel.id == CHANNELS["Bot"] and message.content:
-        #     if message.content[0] == "/":
-        #         await self.process_commands(message)
 
     async def on_message_delete(self, message: Message):
         if type(message.channel) is DMChannel:
