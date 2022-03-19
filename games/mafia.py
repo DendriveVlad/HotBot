@@ -106,7 +106,7 @@ class ConnectionButton(Button):
             self.game.db.update("users", f"user_id == {interaction.user.id}", gold=self.game.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] - self.game.cost)
             await self.game.room.set_permissions(interaction.user, read_messages=True)
             if players_count == 5:
-                view = View()
+                view = View(timeout=600)
                 view.add_item(StartGame(self.game))
                 await self.game.room.send("К игре подключилось минимальное количество человек, чтобы не ждать других игроков нажмите ниже", view=view)
             players_count = len(self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"].split())
@@ -132,7 +132,7 @@ class ConnectionButton(Button):
 
 class Connection(View):
     def __init__(self, game_class):
-        super().__init__(timeout=30)
+        super().__init__(timeout=60)
         self.game = game_class
         self.add_item(ConnectionButton(game_class))
 
