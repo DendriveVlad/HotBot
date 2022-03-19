@@ -19,6 +19,9 @@ class Admin(commands.Cog):
         if not self.__check_mod(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
+        if interaction.channel.id != CHANNELS["Admin"]:
+            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         if not member:
@@ -35,24 +38,25 @@ class Admin(commands.Cog):
         if not self.__check_mod(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
+        if interaction.channel.id != CHANNELS["Admin"]:
+            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
-        member = self.__get_member(str_member)
-        if not member:
-            await interaction.response.send_message(embed=Embed(title="Не верно задан пользователь", colour=0xBF1818), ephemeral=True)
-            return
-        if member.bot:
-            await interaction.response.send_message(embed=Embed(title="Использование команд на ботов отключено", colour=0xBF1818), ephemeral=True)
-            return
-        try:
-            await member.unban()
-            await interaction.response.send_message(embed=Embed(title="Участник разблокирован", colour=0x21F300), ephemeral=False)
-        except NotFound:
-            await interaction.response.send_message(embed=Embed(title="Участник НЕ заблокирован", colour=0xBF1818), ephemeral=False)
+        async for ban in interaction.guild.bans:
+            if ban.user.id == int(str_member[-19:-1]):
+                await interaction.guild.unban(ban.user)
+                await interaction.response.send_message(embed=Embed(title="Участник разблокирован", colour=0x21F300), ephemeral=False)
+                return
+        await interaction.response.send_message(embed=Embed(title="Не верно задан пользователь или пользователь не заблокирован", colour=0xBF1818), ephemeral=True)
+        return
 
     @slash_command(name="channel-ban", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_ban(self, interaction: Interaction, str_member: str, str_channel: str):
         if not self.__check_mod(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
+        if interaction.channel.id != CHANNELS["Admin"]:
+            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
             return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
@@ -74,6 +78,9 @@ class Admin(commands.Cog):
         if not self.__check_mod(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
+        if interaction.channel.id != CHANNELS["Admin"]:
+            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
+            return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         ban_channel = self.__get_channel(str_channel)
@@ -92,8 +99,11 @@ class Admin(commands.Cog):
     @slash_command(name="set", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
     async def set(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                   str_member: str = None, count: int = 0):
-        if not self.__check_mod(interaction.user.roles):
+        if not self.__check_adm(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
+        if interaction.channel.id != CHANNELS["Admin"]:
+            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
             return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
@@ -119,8 +129,11 @@ class Admin(commands.Cog):
     @slash_command(name="remove", description="Удалить определённое количество золота или опыта у участника", guild_ids=[SERVER_ID])
     async def remove(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                      str_member: str = None, count: int = 0):
-        if not self.__check_mod(interaction.user.roles):
+        if not self.__check_adm(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
+        if interaction.channel.id != CHANNELS["Admin"]:
+            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
             return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
@@ -146,8 +159,11 @@ class Admin(commands.Cog):
     @slash_command(name="add", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
     async def add(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                   str_member: str = None, count: int = 0):
-        if not self.__check_mod(interaction.user.roles):
+        if not self.__check_adm(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
+            return
+        if interaction.channel.id != CHANNELS["Admin"]:
+            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
             return
         self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
@@ -199,6 +215,12 @@ class Admin(commands.Cog):
             except ValueError:
                 pass
         return None
+
+    def __check_adm(self, roles) -> bool:
+        for r in roles:
+            if r.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]):
+                return True
+        return False
 
     def __check_mod(self, roles) -> bool:
         for r in roles:
