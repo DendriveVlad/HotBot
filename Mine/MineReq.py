@@ -1,5 +1,6 @@
 from asyncio.exceptions import TimeoutError
 
+import nextcord.errors
 from nextcord import ButtonStyle, Embed, Interaction, Thread, Member, utils
 from nextcord.ui import View, button, Button
 
@@ -15,7 +16,10 @@ class CButton(Button):
     async def callback(self, interaction: Interaction):
         m = await interaction.channel.send(f"{interaction.user.mention} перейдите в созданный **Поток**")
         thread = await interaction.channel.create_thread(name=f"{self.label}-{interaction.user}", message=m)
-        await interaction.response.send_message(f"Перейдите в ветку {thread.mention} и ответьте на вопросы", ephemeral=True)
+        try:
+            await interaction.response.send_message(f"Перейдите в ветку {thread.mention} и ответьте на вопросы", ephemeral=True)
+        except nextcord.errors.NotFound:
+            pass
         await m.delete()
         self.disabled = True
         self.view.stop()
@@ -28,7 +32,7 @@ class CreateRequest(View):
         self.channel = channel
         self.bot = bot
 
-    @button(style=ButtonStyle.green, label="Создать заявку", emoji="📝", custom_id="create")
+    @button(style=ButtonStyle.success, label="Создать заявку", emoji="📝", custom_id="create")
     async def create(self, button, interaction: Interaction):
         btns = (("Строительство", "🚧"), ("Квесты", "✒"), ("Дизайн", "✏"), ("Программирование", "✏"), ("Другое", "🧙"))
         view = View()
@@ -42,11 +46,11 @@ class Confirm(View):
         super().__init__(timeout=60)
         self.accept = True
 
-    @button(style=ButtonStyle.green, label="Подтвердить", emoji="✅")
+    @button(style=ButtonStyle.success, label="Подтвердить", emoji="✅")
     async def confirm(self, button, interaction: Interaction):
         self.stop()
 
-    @button(style=ButtonStyle.gray, label="Отмена")
+    @button(style=ButtonStyle.secondary, label="Отмена")
     async def cancel(self, button, interaction: Interaction):
         self.accept = False
         self.stop()

@@ -52,9 +52,9 @@ class Click(Button):
 
                     percent = 0
                     for role in interaction.user.roles:
-                        if (role.id == ROLES["Old"] or role.id == ROLES["Sponsor1"]) and percent == 0:
+                        if role.id in (ROLES["Old"], ROLES["Sponsor1"]) and percent == 0:
                             percent = 0.05
-                        elif (role.id == ROLES["Booster"] or role.id == ROLES["Jedi"] or role.id == ROLES["Sith"] or role.id == ROLES["Sponsor2"]) and percent < 0.1:
+                        elif role.id in (ROLES["Booster"], ROLES["Jedi"], ROLES["Sith"], ROLES["Sponsor2"]) and percent < 0.1:
                             percent = 0.1
                         elif role.id == ROLES["Sponsor3"]:
                             percent = 0.2
@@ -70,7 +70,7 @@ class Click(Button):
                     plus_exp = 25 + (5 * date["rewards_count"]) * ((date["rewards_count"] // 2) + 1) + (35 if date["rewards_count"] == 7 else 0)
                     self.db.update("users", f"user_id == {interaction.user.id}", points=date["points"] + plus_exp, gold=date["gold"] + plus_gold + int(bonus_gold_level + bonus_gold_status), last_reward=dt + (60 * 60 * 24), rewards_count=date["rewards_count"])
                     mess_level = f"(+{int(bonus_gold_level + bonus_gold_status)}: " \
-                                 f"{('бонус за уровень ' + str(2 * level) + '%' if bonus_gold_level else '') + (', ' if bonus_gold_level and bonus_gold_level else '') + ('бонус за статус ' + str(int(percent * 100)) + '%' if bonus_gold_level else '')})" if bonus_gold_level or bonus_gold_status else ""
+                                 f"{('бонус за уровень ' + str(2 * level) + '%' if bonus_gold_level else '') + (', ' if bonus_gold_level and bonus_gold_status else '') + ('бонус за статус ' + str(int(percent * 100)) + '%' if bonus_gold_level else '')})" if bonus_gold_level or bonus_gold_status else ""
 
                     await interaction.response.send_message(
                         embed=Embed(title="Поздравляю!", description=f"<@{interaction.user.id}>, Вы получили: \n"
@@ -83,27 +83,24 @@ class Click(Button):
 async def top(channel, bot, db):
     top_message = None
     while True:
+        top_image = File(fp=get_top(channel.guild, db))
+        if top_message:
+            await top_message.delete()
+        else:
+            await channel.purge()
+            award = View(timeout=None)
+            award.add_item(Click(style=ButtonStyle.primary, label="Получить ежедневную награду", emoji="💰", custom_id="get_award", db=db, bot=bot))
+            await channel.send(embed=Embed(description="**Время ожидания между запросами 15 секунд** \n"
+                                                       "**Топ обновляется каждые 10 минут \n**"
+                                                       "Нажмите ниже, чтобы получить ежедневную награду \n"
+                                                       "(**Если вы получаете ежедневную награду несколько раз подряд, то она возрастает**)"), view=award)
         try:
-            top_image = File(fp=get_top(channel.guild, db))
-            if top_message:
-                await top_message.delete()
-            else:
-                await channel.purge()
-                award = View(timeout=None)
-                award.add_item(Click(style=ButtonStyle.blurple, label="Получить ежедневную награду", emoji="💰", custom_id="get_award", db=db, bot=bot))
-                await channel.send(embed=Embed(description="**Время ожидания между запросами 15 секунд** \n"
-                                                           "**Топ обновляется каждые 10 минут \n**"
-                                                           "Нажмите ниже, чтобы получить ежедневную награду \n"
-                                                           "(**Если вы получаете ежедневную награду несколько раз подряд, то она возрастает**)"), view=award)
-            try:
-                level = View(timeout=None)
-                level.add_item(Click(style=ButtonStyle.green, label="Узнать свой уровень", emoji="🔝", custom_id="get_level", db=db, bot=bot))
-                top_message = await channel.send(file=top_image, view=level)
-            except DiscordServerError:
-                continue
-            await sleep(600)
-        except:
-            print("Похуй+похуй")
+            level = View(timeout=None)
+            level.add_item(Click(style=ButtonStyle.success, label="Узнать свой уровень", emoji="🔝", custom_id="get_level", db=db, bot=bot))
+            top_message = await channel.send(file=top_image, view=level)
+        except DiscordServerError:
+            continue
+        await sleep(600)
 
 
 async def level_up(bot, old_points, new_points, member_id):

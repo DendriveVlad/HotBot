@@ -76,4 +76,3 @@ if __name__ == "__main__":
     db = DB()
     db.delete("games", "game_cost == 0")
     print(db.select("games"))
-

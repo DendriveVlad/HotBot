@@ -25,19 +25,19 @@ class ChoiceGame(View):
         self.db = db
         self.bot = bot
 
-    @button(style=ButtonStyle.green, label="Горячая картошка (Быстрая)", emoji="🥔", row=0, custom_id="potato_short")
+    @button(style=ButtonStyle.success, label="Горячая картошка (Быстрая)", emoji="🥔", row=0, custom_id="potato_short")
     async def potato_short(self, button, interaction: Interaction):
         await self.create_room("potato", interaction)
 
-    @button(style=ButtonStyle.green, label="Горячая картошка (Длинная)", emoji="🥔", row=0, custom_id="potato_long")
+    @button(style=ButtonStyle.success, label="Горячая картошка (Длинная)", emoji="🥔", row=0, custom_id="potato_long")
     async def potato_long(self, button, interaction: Interaction):
         await self.create_room("potato", interaction)
 
-    @button(style=ButtonStyle.green, label="Мафия Lite", emoji="🤵", row=1, custom_id="mafia")
+    @button(style=ButtonStyle.success, label="Мафия Lite", emoji="🤵", row=1, custom_id="mafia")
     async def mafia(self, button, interaction: Interaction):
         await self.create_room("mafia", interaction)
 
-    @button(style=ButtonStyle.grey, label="Новые игры появятся позже...", emoji="🔃", row=2)
+    @button(style=ButtonStyle.secondary, label="Новые игры появятся позже...", emoji="🔃", row=2)
     async def nothing(self, button, interaction: Interaction):
         await interaction.response.pong()
 
@@ -61,7 +61,7 @@ class ChoiceGame(View):
                 game_number = 0
         else:
             game_number = 0
-        room = await interaction.channel.guild.create_text_channel(f"{game}-{game_number}", category=interaction.channel.category, overwrites=overwrites)
+        room = await interaction.channel.guild.create_text_channel(f"{game}-{game_number}", category=interaction.channel.category, overwrites=overwrites, slowmode_delay=2)
         self.db.insert("games", room_id=room.id, game_name=game, game_number=game_number, started=0, players=f"{interaction.user.id}")
         match game:
             case "potato":

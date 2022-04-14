@@ -70,7 +70,7 @@ async def potato_game(room, owner, bot, db, game_hub, gamemode):
 
 class StartGame(Button):
     def __init__(self, game_class):
-        super().__init__(style=ButtonStyle.green, label="Начать игру", emoji="▶", custom_id="start")
+        super().__init__(style=ButtonStyle.success, label="Начать игру", emoji="▶", custom_id="start")
         self.game = game_class
 
     async def callback(self, interaction: Interaction):
@@ -90,7 +90,7 @@ class StartGame(Button):
 class ConnectionButton(Button):
     def __init__(self, game_class):
         self.game = game_class
-        super().__init__(style=ButtonStyle.green, label="Подключиться", emoji="➕", custom_id=f"potato-{self.game.db.select('games', f'room_id == {self.game.room.id}', 'game_number')['game_number']}")
+        super().__init__(style=ButtonStyle.success, label="Подключиться", emoji="➕", custom_id=f"potato-{self.game.db.select('games', f'room_id == {self.game.room.id}', 'game_number')['game_number']}")
 
     async def callback(self, interaction):
         players_count = len(self.game.db.select("games", f"room_id == {self.game.room.id}", "players")["players"].split())

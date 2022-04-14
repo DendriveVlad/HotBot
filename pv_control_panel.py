@@ -21,17 +21,17 @@ async def voice_control_panel(text, voice, member, bot, db):
     speak_permission = channel_overwrites.speak
     try:
         components = [
-            Button(style=ButtonStyle.green, label="Открыть канал", emoji="🌐", row=0, custom_id="open") if not view_permission else "",
-            Button(style=ButtonStyle.red, label="Закрыть канал", emoji="⛔", row=0, custom_id="close") if view_permission else "",
-            Button(style=ButtonStyle.green, label="Изменить название канала", emoji="📝", row=1, custom_id="change_name") if voice.name == "Канал для " + member.name else "",
-            Button(style=ButtonStyle.green, label="Установить лимит участников", emoji="⭕", row=1, custom_id="change_limit"),
-            Button(style=ButtonStyle.red, label="Замутить всех участников", emoji="😶", row=2, custom_id="mute_all") if speak_permission or speak_permission is None else
-            Button(style=ButtonStyle.green, label="Размутить всех участников", emoji="😄", row=2, custom_id="unmute_all"),
-            Button(style=ButtonStyle.blurple, label="Замутить/размутить участника", emoji="🎤", row=2, custom_id="mute"),
-            Button(style=ButtonStyle.red, label="Забанить участника", emoji="🚷", row=3, custom_id="ban"),
-            Button(style=ButtonStyle.green, label="Разбанить участника", emoji="🚹", row=3, custom_id="unban"),
-            Button(style=ButtonStyle.green, label="Пригласить участника", emoji="👥", row=3, custom_id="invite") if not view_permission else "",
-            Button(style=ButtonStyle.blurple, label="Установить пароль", emoji="📕", row=4, custom_id="password") if not view_permission else ""
+            Button(style=ButtonStyle.success, label="Открыть канал", emoji="🌐", row=0, custom_id="open") if not view_permission else "",
+            Button(style=ButtonStyle.danger, label="Закрыть канал", emoji="⛔", row=0, custom_id="close") if view_permission else "",
+            Button(style=ButtonStyle.success, label="Изменить название канала", emoji="📝", row=1, custom_id="change_name") if voice.name == "Канал для " + member.name else "",
+            Button(style=ButtonStyle.success, label="Установить лимит участников", emoji="⭕", row=1, custom_id="change_limit"),
+            Button(style=ButtonStyle.danger, label="Замутить всех участников", emoji="😶", row=2, custom_id="mute_all") if speak_permission or speak_permission is None else
+            Button(style=ButtonStyle.success, label="Размутить всех участников", emoji="😄", row=2, custom_id="unmute_all"),
+            Button(style=ButtonStyle.primary, label="Замутить/размутить участника", emoji="🎤", row=2, custom_id="mute"),
+            Button(style=ButtonStyle.danger, label="Забанить участника", emoji="🚷", row=3, custom_id="ban"),
+            Button(style=ButtonStyle.success, label="Разбанить участника", emoji="🚹", row=3, custom_id="unban"),
+            Button(style=ButtonStyle.success, label="Пригласить участника", emoji="👥", row=3, custom_id="invite") if not view_permission else "",
+            Button(style=ButtonStyle.primary, label="Установить пароль", emoji="📕", row=4, custom_id="password") if not view_permission else ""
         ]
         view = View()
         for button in components:

@@ -39,10 +39,8 @@ def get_top(guild, db):
                     user = guild.get_member(user_level[place][0])
                     top.paste(Image.open(BytesIO(get(str(user.avatar.url), stream=True).content)).convert("RGBA").resize((41, 41), Image.ANTIALIAS), (52, h - 40))  # картинка
                     break
-                except UnidentifiedImageError:
-                    continue
-                except ConnectionError:
-                    continue
+                except:
+                    top.paste(Image.open("default_avatar.png"))
             draw.ellipse((72, h - 20, 95, h + 3), fill=(223, 233, 252), outline=(120, 144, 193))  # level sphere
             draw.text((79 if level < 10 else 74, h - 17), str(level), font=level_font, fill=(196, 61, 255))  # level
             draw.text((105, h - 42), user.nick if user.nick else user.name, font=name_font, fill=user.color.to_rgb())  # name
