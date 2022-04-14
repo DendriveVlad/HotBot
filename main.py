@@ -115,17 +115,13 @@ class Bot(commands.Bot):
                     return
 
     async def on_message_delete(self, message: Message):
-        if type(message.channel) is DMChannel:
-            return
-        if message.channel.category_id in CATEGORIES.values() or message.author.id in self.spam_count:
+        if type(message.channel) is DMChannel or message.channel.category_id in CATEGORIES.values() or message.author.id in self.spam_count:
             return
         content = message.content
         await self.send_log(f"[MessageRemove] Сообщение **{content}** от <@{message.author.id}> в канале <#{message.channel.id}> удалено", 0xBF1818)
 
     async def on_message_edit(self, before: Message, after: Message):
-        if type(before.channel) is DMChannel:
-            return
-        if before.channel.category_id == CATEGORIES["Bot"]:
+        if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID:
             return
 
         if len(after.content) + len(before.content) <= 128:
