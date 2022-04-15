@@ -57,7 +57,7 @@ async def potato_game(room, owner, bot, db, game_hub, gamemode):
         await room.send("Время настройки вышло, канал удаляется.")
         await sleep(5)
         db.delete("games", f"room_id == {room.id}")
-        await bot.send_log(f"[GameNotStarted] Игра <@{owner}> не началась", color=0xA927C1)
+        await bot.send_log(log_type="GameNotStarted", info=f"Игра не началась", member=bot.get_user(owner), color=0xA927C1)
         await room.delete()
         return
     view = Connection(game)
@@ -151,7 +151,7 @@ class Connection(View):
                 if self.game.cost:
                     for player in self.game.players_list.keys():
                         self.game.db.update("users", f"user_id == {player}", gold=self.game.db.select("users", f"user_id == {player}", "gold")["gold"] + self.game.cost)
-                await self.game.bot.send_log(f"[GameNotStarted] Игра <@{list(self.game.players_list.keys())[0]}> не началась", color=0xA927C1)
+                await self.game.bot.send_log(log_type="GameNotStarted", info=f"Игра не началась", member=self.game.bot.get_user(list(self.game.players_list.keys())[0]), color=0xA927C1)
 
 
 class Game:
@@ -319,7 +319,7 @@ class Game:
         await sleep(30)
         self.db.delete("games", f"room_id == {self.room.id}")
         await self.room.delete()
-        await self.bot.send_log(f"[GameEnd] Игра закончилась, победитель: <@{first}>", color=0xE160F9)
+        await self.bot.send_log(log_type="GameEnd", info=f"Игра закончилась", member=self.bot.get_user(list(self.players_list.keys())[0]), fields=("Победитель:", f"<@{first}>"), color=0xE160F9)
 
     def get_random_player(self, ignore_players: list[int]) -> tuple[int, list[int]]:
         players = list(self.players_list.keys()).copy()

@@ -111,7 +111,7 @@ async def level_up(bot, old_points, new_points, member_id):
             channel = utils.get(bot.get_guild(SERVER_ID).channels, id=CHANNELS["Top"])
             await channel.send(f"<@{member_id}>", embed=Embed(description=f"Поздравляю с достижением нового уровня!\n"
                                                                           f"Теперь Ваш уровень: **{level}**", colour=0x21F300), delete_after=20)
-            await bot.send_log(f"[MemberNewLevel] <@{member_id}> получил уровень {level}")
+            await bot.send_log(log_type="MemberNewLevel", info=f"Получил уровень {level}", member=bot.get_user(member_id))
 
             if level == 30:
                 await channel.send(embed=Embed(description=f"😱 <@{member_id}> достиг последнего уровня!", color=0xFF6060), delete_after=3600)

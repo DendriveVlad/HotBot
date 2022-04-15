@@ -69,7 +69,7 @@ class ChoiceGame(View):
             case "mafia":
                 self.bot.loop.create_task(mafia_game(room, interaction.user.id, self.bot, self.db, interaction.channel))
         await interaction.response.send_message(f"Игра создана. Перейдите в канал с игрой <#{room.id}>.", ephemeral=True)
-        await self.bot.send_log(f"[GameCreate] <@{interaction.user.id}> создал игру {game}-{game_number}", color=0xE160F9)
+        await self.bot.send_log(log_type="GameCreate", info=f"Создал игру {game}-{game_number}", member=interaction.user, color=0xE160F9)
 
 
 async def hub(channel, bot, db):

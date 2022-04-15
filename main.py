@@ -1,5 +1,6 @@
 import os
 from asyncio import sleep
+from datetime import datetime
 from time import time, ctime as ct
 
 from nextcord import *
@@ -53,20 +54,19 @@ class Bot(commands.Bot):
                     return
         db.insert("users", user_id=member.id, connection_date=int(time()))
         await member.add_roles(utils.get(member.guild.roles, id=ROLES["Newbie"]))
-        await self.send_log(f"[MemberJoin] <@{member.id}> стал частью сервера", 0x21F300)
+        await self.send_log(log_type="MemberJoin", info="Подключился к серверу", member=member, color=0x21F300)
 
     async def on_member_remove(self, member: Member):
         if member.pending:
             return
         db.delete("users", f"user_id == {member.id}")
-        await self.send_log(f"[MemberLeave] **{member}** покинул сервер", 0xBF1818)
+        await self.send_log(log_type="MemberLeave", info="Покинул сервер", member=member, color=0xBF1818)
 
     async def on_message(self, message: Message):
         if message.author.id == BOT_ID:
             return
         if type(message.channel) is DMChannel:
-            await self.send_log(f"Гений на {message.author.mention} пишет мне в ЛС следующее сообщение: \n"
-                                f"**{message.content}**", color=0x766EFF)
+            await self.send_log(log_type="Гений", member=message.author, fields=("Пишет мне в ЛС следующее сообщение:", message.content), color=0x766EFF)
             async for h in message.channel.history(limit=10):
                 if h.author.id == BOT_ID:
                     return
@@ -87,7 +87,7 @@ class Bot(commands.Bot):
                 link = ".".join(message.content[message.content.index("https://"):].split("/")[2].split(".")[-2:])
                 if link not in ALLOWED_LINKS:
                     await message.delete()
-                    await self.send_log(f"[StopSpam] Удалено спам-сообщение: **{message.content}** от {message.author}", 0xF9BA1C)
+                    await self.send_log(log_type="StopSpam", member=message.author, fields=("Удалено спам-сообщениее:", message.content), color=0xF9BA1C)
                     if self.spam_count.count(message.author.id) >= 2:
                         await message.author.ban(reason="Spam")
                         return
@@ -117,52 +117,61 @@ class Bot(commands.Bot):
     async def on_message_delete(self, message: Message):
         if type(message.channel) is DMChannel or message.channel.category_id in CATEGORIES.values() or message.author.id in self.spam_count:
             return
-        content = message.content
-        await self.send_log(f"[MessageRemove] Сообщение **{content}** от <@{message.author.id}> в канале <#{message.channel.id}> удалено", 0xBF1818)
+
+        deleter = None
+        async for deleted_message in message.guild.audit_logs(limit=1, action=AuditLogAction.message_delete):
+            if deleted_message.id == message.id:
+                deleter = deleted_message.user
+
+        await self.send_log(log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + deleter.mention if deleter else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
 
     async def on_message_edit(self, before: Message, after: Message):
-        if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID:
+        if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID or (not before.attachments and after.attachments):
             return
 
-        if len(after.content) + len(before.content) <= 128:
-            await self.send_log(f"[MessageEdit] Сообщение **{before.content}** от <@{after.author.id}> в канале <#{after.channel.id}> изменено на **{after.content}**", 0x285064)
+        if len(after.content) + len(before.content) <= 256:
+            await self.send_log(log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author, fields=[("До:", before.content), ("После:", after.content)], color=0x285064)
             return
 
         index = 0
         for char in after.content:
             if len(before.content) == index + 1:
                 await self.send_log(f"[MessageEdit] Сообщение **...{before.content[index - 20:]}** от <@{after.author.id}> в канале <#{after.channel.id}> изменено на "
-                                    f"**...{after.content[index - 20:] if len(after.content[index - 20:]) <= 1800 else after.content[index - 20:index + 60] + '...'}**", 0x285064)
+                                    f"**...{after.content[index - 20:] if len(after.content[index - 20:]) <= 256 else after.content[index - 20:index + 60] + '...'}**", 0x285064)
+                await self.send_log(log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author,
+                                    fields=[("До:", before.content[index - 20:]), ("После:", after.content[index - 20:] if len(after.content[index - 20:]) <= 256 else after.content[index - 20:index + 60] + '...')],
+                                    color=0x285064)
                 return
 
             if before.content[index] != char:
                 if index < 11:
-                    if len(before.content) > 60:
-                        old = before.content[0:60] + "..."
+                    if len(before.content) > 128:
+                        old = before.content[0:128] + "..."
                     else:
                         old = before.content[0:]
-                    if len(after.content) > 60:
-                        new = after.content[0:60]
+                    if len(after.content) > 128:
+                        new = after.content[0:128]
                     else:
                         new = after.content[0:] + "..."
 
                 else:
-                    if len(before.content) > 60 + index:
-                        old = "..." + before.content[index - 10:index + 60] + "..."
+                    if len(before.content) > 128 + index:
+                        old = "..." + before.content[index - 10:index + 128] + "..."
                     else:
                         old = "..." + before.content[index - 10:]
-                    if len(after.content) > 60 + index:
-                        new = "..." + after.content[index - 10:index + 60] + "..."
+                    if len(after.content) > 128 + index:
+                        new = "..." + after.content[index - 10:index + 128] + "..."
                     else:
                         new = "..." + after.content[index - 10:]
 
-                await self.send_log(f"[MessageEdit] Сообщение **{old}** от <@{after.author.id}> в канале <#{after.channel.id}> изменено на **{new}**", 0x285064)
+                await self.send_log(log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author, fields=[("До:", old), ("После:", new)], color=0x285064)
+
                 return
             index += 1
 
     async def on_voice_state_update(self, member: Message, before: VoiceState, after: VoiceState):
         if not after.channel and before.channel:
-            await self.send_log(f"[VoiceDisconnect] <@{member.id}> вышел из голосового канала")
+            await self.send_log(log_type="VoiceDisconnect", info="Вышел из голосового канала", member=member)
             date = db.select("users", f"user_id == {member.id}", "points", "talk_time")
             new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
             db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
@@ -173,7 +182,7 @@ class Bot(commands.Bot):
                 new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
                 db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
                 await level_up(self, date["points"], new_points, member.id)
-            await self.send_log(f"[VoiceConnect] <@{member.id}> зашёл в канал {after.channel}")
+            await self.send_log(log_type="VoiceConnect", info=f"Зашёл в канал {after.channel}", member=member)
             if not before.channel:
                 db.update("users", f"user_id == {member.id}", talk_time=int(time()))
 
@@ -210,7 +219,7 @@ class Bot(commands.Bot):
                 voice, text = utils.get(serv.voice_channels, id=date["channel_id"]), utils.get(serv.text_channels, id=date["control_id"])
                 await voice.delete()
                 await text.delete()
-                await self.send_log(f"[RemovePrivateChannel] Канал для <@{member.id}> удалён")
+                await self.send_log(log_type="RemovePrivateChannel", info=f"Приватный канал удалён", member=member)
             break
         if after.channel:
             if after.channel.id == CHANNELS["createVC"]:
@@ -225,7 +234,7 @@ class Bot(commands.Bot):
                 await voice.set_permissions(member, view_channel=True, speak=True)
                 text = await serv.create_text_channel("панель-управления-каналом", category=after.channel.category, overwrites=overwrites_text)
                 db.insert("private_voices", channel_id=voice.id, channel_owner=member.id, control_id=text.id)
-                await self.send_log(f"[CreatePrivateChannel] Канал для <@{member.id}> создан")
+                await self.send_log(log_type="CreatePrivateChannel", info=f"Приватный канал создан", member=member)
                 await member.move_to(channel=voice, reason="Создал канал для себя")
                 await text.send(f"<@{member.id}>", delete_after=1)
                 while 1:
@@ -241,10 +250,21 @@ class Bot(commands.Bot):
             elif old not in before.roles:
                 await after.remove_roles(new)
 
-    async def send_log(self, message: str, color: hex = 0x3B3B3B):
+    async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
         channel = utils.get(self.get_guild(SERVER_ID).channels, id=CHANNELS["logs"])
-        print(f"[{ct()}] {message}")
-        await channel.send(embed=Embed(description=f"[{ct()}] {message}", colour=color))
+        print(f"[{ct()}] {info}")
+        embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
+        if member:
+            embed.set_author(
+                name=member.name,
+                icon_url=member.avatar.url
+            )
+        if isinstance(fields, tuple):
+            embed.add_field(name=fields[0], value=fields[-1])
+        elif isinstance(fields, list):
+            for field in fields:
+                embed.add_field(name=field[0], value=field[-1])
+        await channel.send(embed=embed)
 
     @staticmethod
     async def get_level(member_id: int):
