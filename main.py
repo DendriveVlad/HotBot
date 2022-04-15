@@ -259,7 +259,7 @@ class Bot(commands.Bot):
         if member:
             embed.set_author(
                 name=member,
-                icon_url=member.avatar.url
+                icon_url=member.avatar.url if member.avatar.url else None
             )
         if isinstance(fields, tuple):
             embed.add_field(name=fields[0], value=fields[-1])
