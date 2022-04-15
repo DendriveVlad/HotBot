@@ -119,9 +119,11 @@ class Bot(commands.Bot):
             return
 
         deleter = None
-        async for deleted_message in message.guild.audit_logs(limit=1, action=AuditLogAction.message_delete):
-            if deleted_message.id == message.id:
+        await sleep(0.1)
+        async for deleted_message in message.guild.audit_logs(limit=3, action=AuditLogAction.message_delete):
+            if int(time()) - int(deleted_message.created_at.timestamp()) <= 1 and deleted_message.target.id == message.author.id:
                 deleter = deleted_message.user
+                break
 
         await self.send_log(log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + deleter.mention if deleter else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
 
@@ -256,7 +258,7 @@ class Bot(commands.Bot):
         embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
         if member:
             embed.set_author(
-                name=member.name,
+                name=member,
                 icon_url=member.avatar.url
             )
         if isinstance(fields, tuple):
