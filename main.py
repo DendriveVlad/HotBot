@@ -59,8 +59,21 @@ class Bot(commands.Bot):
     async def on_member_remove(self, member: Member):
         if member.pending:
             return
-        db.delete("users", f"user_id == {member.id}")
-        await self.send_log(log_type="MemberLeave", info="Покинул сервер", member=member, color=0xBF1818)
+        mod = None
+        async for kick in member.guild.audit_logs(limit=3, action=AuditLogAction.kick):
+            if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == member.id:
+                mod = kick.user
+                break
+        await self.send_log(log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, color=0xBF1818)
+
+    async def on_member_ban(self, guild: Guild, user: User | Member):
+        mod = None
+        async for kick in guild.audit_logs(limit=3, action=AuditLogAction.ban):
+            if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == user.id:
+                mod = kick.user
+                break
+        await self.send_log(log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=member, color=0xBF1818)
+        db.delete("users", f"user_id == {user.id}")
 
     async def on_message(self, message: Message):
         if message.author.id == BOT_ID:
@@ -118,14 +131,14 @@ class Bot(commands.Bot):
         if type(message.channel) is DMChannel or message.channel.category_id in CATEGORIES.values() or message.author.id in self.spam_count:
             return
 
-        deleter = None
+        mod = None
         await sleep(0.1)
         async for deleted_message in message.guild.audit_logs(limit=3, action=AuditLogAction.message_delete):
-            if int(time()) - int(deleted_message.created_at.timestamp()) <= 1 and deleted_message.target.id == message.author.id:
-                deleter = deleted_message.user
+            if int(time()) - int(deleted_message.created_at.timestamp()) <= 60 and deleted_message.target.id == message.author.id:
+                mod = deleted_message.user
                 break
 
-        await self.send_log(log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + deleter.mention if deleter else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
+        await self.send_log(log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
 
     async def on_message_edit(self, before: Message, after: Message):
         if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID or (not before.attachments and after.attachments):
@@ -244,28 +257,50 @@ class Bot(commands.Bot):
                         break
 
     async def on_member_update(self, before: Member, after: Member):
-        new = utils.get(before.guild.roles, id=ROLES["Newbie"])
-        old = utils.get(before.guild.roles, id=ROLES["Old"])
-        if new in after.roles and old in after.roles:
-            if new not in before.roles:
-                await after.remove_roles(old)
-            elif old not in before.roles:
-                await after.remove_roles(new)
+        mod = None
+        async for member_update in before.guild.audit_logs(limit=3, action=AuditLogAction.member_update):
+            if int(time()) - int(member_update.created_at.timestamp()) <= 50 and member_update.target.id == before.id:
+                mod = member_update.user
+                break
+        if before.roles != after.roles:
+            for role in after.roles:
+                if role not in before.roles:
+                    await self.send_log(log_type="MemberRoleGet", info=f"Получил роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD88A1F)
+                    break
+            for role in before.roles:
+                if role not in after.roles:
+                    await self.send_log(log_type="MemberRoleRemove", info=f"Потерял роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD85A1F)
+                    break
+            new = utils.get(before.guild.roles, id=ROLES["Newbie"])
+            old = utils.get(before.guild.roles, id=ROLES["Old"])
+            if new in after.roles and old in after.roles:
+                if new not in before.roles:
+                    await after.remove_roles(old)
+                elif old not in before.roles:
+                    await after.remove_roles(new)
+        elif before.timeout != after.timeout:
+            if after.timeout:
+                await self.send_log(log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут выдан на ", f"{int(time()) - int(after.timeout.timestamp())} секунд"), color=0xE5AE46)
+            elif before.timeout:
+                await self.send_log(log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
+        elif before.nick != after.nick:
+            await self.send_log(log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),
+                                                                                                                                                      ("На:", after.nick if after.nick else after.name)], color=0xE5AE46)
 
     async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
         channel = utils.get(self.get_guild(SERVER_ID).channels, id=CHANNELS["logs"])
-        print(f"[{ct()}] {info}")
+        print(f"[{ct()}] {member.id, log_type, info}")
         embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
         if member:
             embed.set_author(
                 name=member,
-                icon_url=member.avatar.url if member.avatar.url else None
+                icon_url=member.avatar.url if member.avatar else None
             )
         if isinstance(fields, tuple):
-            embed.add_field(name=fields[0], value=fields[-1])
+            embed.add_field(name=fields[0], value=fields[-1] if len(fields[-1]) else "~~не текст~~")
         elif isinstance(fields, list):
             for field in fields:
-                embed.add_field(name=field[0], value=field[-1])
+                embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
         await channel.send(embed=embed)
 
     @staticmethod

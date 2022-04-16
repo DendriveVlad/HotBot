@@ -1,4 +1,7 @@
-from nextcord import slash_command, Embed, Interaction, Member, SlashOption, TextChannel
+from datetime import datetime
+from time import time, ctime as ct
+
+from nextcord import slash_command, Embed, Interaction, Member, SlashOption, TextChannel, utils
 from nextcord.ext import commands
 from nextcord.errors import NotFound
 
@@ -14,44 +17,9 @@ class Admin(commands.Cog):
         self.guild = None
         self.channel = None
 
-    @slash_command(name="ban", description="Заблокировать участника сервера", guild_ids=[SERVER_ID])
-    async def ban(self, interaction: Interaction, str_member: str, reason: str):
-        if not self.__check_mod(interaction.user.roles):
-            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
-            return
-        if interaction.channel.id != CHANNELS["Admin"]:
-            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
-            return
-        self.__check_data(interaction.guild)
-        member = self.__get_member(str_member)
-        if not member:
-            await interaction.response.send_message(embed=Embed(title="Не верно задан пользователь", colour=0xBF1818), ephemeral=True)
-            return
-        if member.bot:
-            await interaction.response.send_message(embed=Embed(title="Использование команд на ботов отключено", colour=0xBF1818), ephemeral=True)
-            return
-        await member.ban(reason=reason)
-        await interaction.response.send_message(embed=Embed(title="Участник заблокирован", colour=0x21F300), ephemeral=False)
-
-    @slash_command(name="unban", description="Разблокировать участника сервера", guild_ids=[SERVER_ID])
-    async def unban(self, interaction: Interaction, str_member: str):
-        if not self.__check_mod(interaction.user.roles):
-            await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
-            return
-        if interaction.channel.id != CHANNELS["Admin"]:
-            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
-            return
-        self.__check_data(interaction.guild)
-        async for ban in interaction.guild.bans:
-            if ban.user.id == int(str_member[-19:-1]):
-                await interaction.guild.unban(ban.user)
-                await interaction.response.send_message(embed=Embed(title="Участник разблокирован", colour=0x21F300), ephemeral=False)
-                return
-        await interaction.response.send_message(embed=Embed(title="Не верно задан пользователь или пользователь не заблокирован", colour=0xBF1818), ephemeral=True)
-        return
-
     @slash_command(name="channel-ban", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_ban(self, interaction: Interaction, str_member: str, str_channel: str):
+        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{interaction.data['name'], *[i['value'] for i in interaction.data['options']]}**", member=interaction.user)
         if not self.__check_mod(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
@@ -75,6 +43,7 @@ class Admin(commands.Cog):
 
     @slash_command(name="channel-unban", description="Разблокировать  участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_unban(self, interaction: Interaction, str_member: str, str_channel: str):
+        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{interaction.data['name'], *[i['value'] for i in interaction.data['options']]}**", member=interaction.user)
         if not self.__check_mod(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
@@ -99,6 +68,7 @@ class Admin(commands.Cog):
     @slash_command(name="set", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
     async def set(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                   str_member: str = None, count: int = 0):
+        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{interaction.data['name'], *[i['value'] for i in interaction.data['options']]}**", member=interaction.user)
         if not self.__check_adm(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
@@ -129,6 +99,7 @@ class Admin(commands.Cog):
     @slash_command(name="remove", description="Удалить определённое количество золота или опыта у участника", guild_ids=[SERVER_ID])
     async def remove(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                      str_member: str = None, count: int = 0):
+        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{interaction.data['name'], *[i['value'] for i in interaction.data['options']]}**", member=interaction.user)
         if not self.__check_adm(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
@@ -159,6 +130,7 @@ class Admin(commands.Cog):
     @slash_command(name="add", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
     async def add(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"gold": "gold", "points": "points"}),
                   str_member: str = None, count: int = 0):
+        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{interaction.data['name'], *[i['value'] for i in interaction.data['options']]}**", member=interaction.user)
         if not self.__check_adm(interaction.user.roles):
             await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
             return
@@ -228,6 +200,21 @@ class Admin(commands.Cog):
                 return True
         return False
 
+    async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
+        channel = utils.get(self.client.get_guild(SERVER_ID).channels, id=CHANNELS["logs"])
+        print(f"[{ct()}] {member.id, log_type, info}")
+        embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
+        if member:
+            embed.set_author(
+                name=member,
+                icon_url=member.avatar.url if member.avatar else None
+            )
+        if isinstance(fields, tuple):
+            embed.add_field(name=fields[0], value=fields[-1] if len(fields[-1]) else "~~не текст~~")
+        elif isinstance(fields, list):
+            for field in fields:
+                embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
+        await channel.send(embed=embed)
 
 def setup(client):
     client.add_cog(Admin(client))
