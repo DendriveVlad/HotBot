@@ -2,6 +2,7 @@ import os
 from asyncio import sleep
 from datetime import datetime
 from time import time, ctime as ct
+from random import choice
 
 from nextcord import *
 from nextcord.ext import tasks, commands
@@ -52,7 +53,8 @@ class Bot(commands.Bot):
                     return
                 except errors.NotFound:
                     return
-        db.insert("users", user_id=member.id, connection_date=int(time()))
+        if not db.select("users", f"user_id == {member.id}"):
+            db.insert("users", user_id=member.id, connection_date=int(time()))
         await member.add_roles(utils.get(member.guild.roles, id=ROLES["Newbie"]))
         await self.send_log(log_type="MemberJoin", info="Подключился к серверу", member=member, color=0x21F300)
 
@@ -111,6 +113,8 @@ class Bot(commands.Bot):
 
         if message.channel.id in LEVEL_ALLOWED_TEXT_CHANNELS:
             date = db.select("users", f"user_id == {message.author.id}", "points", "last_message")
+            if not date["points"] and message.content.lower().replace("!", "").replace(".", "").replace(",", "").replace("\\", "") in ("прив", "ку", "хай", "куку", "хеллоу", "дарова", "привет", "привет всем", "всем ку", "ку всем", "здравствуйте", "здарова", "приветики", "приветик"):
+                await message.reply(choice(("Дарова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
             if int(time()) > date["last_message"] + 20:
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
                 await level_up(self, date["points"], date["points"] + 10, message.author.id)
@@ -280,7 +284,7 @@ class Bot(commands.Bot):
                     await after.remove_roles(new)
         elif before.timeout != after.timeout:
             if after.timeout:
-                await self.send_log(log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут выдан на ", f"{int(time()) - int(after.timeout.timestamp())} секунд"), color=0xE5AE46)
+                await self.send_log(log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут будет действовать до:", f"<t:{int(after.timeout.timestamp())}>"), color=0xE5AE46)
             elif before.timeout:
                 await self.send_log(log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
         elif before.nick != after.nick:
@@ -294,7 +298,7 @@ class Bot(commands.Bot):
         if member:
             embed.set_author(
                 name=member,
-                icon_url=member.avatar.url if member.avatar else None
+                icon_url=member.avatar.url if member.avatar else Embed.Empty
             )
         if isinstance(fields, tuple):
             embed.add_field(name=fields[0], value=fields[-1] if len(fields[-1]) else "~~не текст~~")
