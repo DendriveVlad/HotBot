@@ -13,14 +13,15 @@ db = DB()
 class Admin(commands.Cog):
     def __init__(self, client):
         self.client = client
-        self.guild = client.get_guild(SERVER_ID)
-        self.channel = self.guild.get_channel(CHANNELS["staff"])
+        self.guild = None
+        self.channel = None
 
     @slash_command(name="channel-ban", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_ban(self, interaction: Interaction, str_member: str, str_channel: str):
+        self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         ban_channel = self.__get_channel(str_channel)
-        if not await self.checks(interaction, "13456", member=member, channel=ban_channel):
+        if not await self.__checks(interaction, "13456", member=member, channel=ban_channel):
             return
 
         await ban_channel.set_permissions(member, read_messages=False)
@@ -28,9 +29,10 @@ class Admin(commands.Cog):
 
     @slash_command(name="channel-unban", description="Разблокировать  участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_unban(self, interaction: Interaction, str_member: str, str_channel: str):
+        self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
         ban_channel = self.__get_channel(str_channel)
-        if not await self.checks(interaction, "13456", member=member, channel=ban_channel):
+        if not await self.__checks(interaction, "13456", member=member, channel=ban_channel):
             return
 
         await ban_channel.set_permissions(member, read_messages=None)
@@ -38,8 +40,9 @@ class Admin(commands.Cog):
 
     @slash_command(name="set", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
     async def set(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"Золото": "gold", "Очки": "points"}), str_member: str = None, count: int = 0):
+        self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
-        if not await self.checks(interaction, "234578", member=member, count=count):
+        if not await self.__checks(interaction, "234578", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={int(count)})")
@@ -47,8 +50,9 @@ class Admin(commands.Cog):
 
     @slash_command(name="remove", description="Удалить определённое количество золота или опыта у участника", guild_ids=[SERVER_ID])
     async def remove(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"Золото": "gold", "Очки": "points"}), str_member: str = None, count: int = 0):
+        self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
-        if not await self.checks(interaction, "234578", member=member, count=count):
+        if not await self.__checks(interaction, "234578", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] - int(count)})")
@@ -56,14 +60,15 @@ class Admin(commands.Cog):
 
     @slash_command(name="add", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
     async def add(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"Золото": "gold", "Очки": "points"}), str_member: str = None, count: int = 0):
+        self.__check_data(interaction.guild)
         member = self.__get_member(str_member)
-        if not await self.checks(interaction, "234578", member=member, count=count):
+        if not await self.__checks(interaction, "234578", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] + int(count)})")
         await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
-    async def checks(self, interaction: Interaction, checks, **other) -> bool:
+    async def __checks(self, interaction: Interaction, checks, **other) -> bool:
         await self.send_log(log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *[str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
 
         if "1" in checks:
@@ -86,8 +91,8 @@ class Admin(commands.Cog):
                 await interaction.response.send_message(embed=Embed(title="Ты кто такой, сцуко?", colour=0xBF1818), ephemeral=True)
                 return False
 
-        if "3" in checks and interaction.channel.id != CHANNELS["Admin"]:
-            await interaction.response.send_message(embed=Embed(title="Данное действие разрешено только в канале", colour=0xBF1818), ephemeral=True)
+        if "3" in checks and interaction.channel != self.channel:
+            await interaction.response.send_message(embed=Embed(title=f"Данное действие разрешено только в канале #{self.channel.name}", colour=0xBF1818), ephemeral=True)
             return False
 
         if "4" in checks and not other["member"]:
@@ -111,6 +116,12 @@ class Admin(commands.Cog):
             return False
 
         return True
+
+    def __check_data(self, guild):
+        if not self.guild:
+            self.guild = guild
+        if not self.channel:
+            self.channel = self.guild.get_channel(CHANNELS["staff"])
 
     def __get_member(self, str_member: str) -> Member | None:
         if len(str_member) in [21, 22] and str_member[0:2] == "<@" and str_member[-1] == ">":
@@ -137,7 +148,7 @@ class Admin(commands.Cog):
         return None
 
     async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
-        channel = utils.get(self.client.get_guild(SERVER_ID).channels, id=CHANNELS["logs"])
+        channel = utils.get(self.guild.channels, id=CHANNELS["logs"])
         print(f"[{ct()}] {member.id, log_type, info}")
         embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
         if member:
@@ -151,7 +162,6 @@ class Admin(commands.Cog):
             for field in fields:
                 embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
         await channel.send(embed=embed)
-
 
 def setup(client):
     client.add_cog(Admin(client))
