@@ -512,7 +512,7 @@ class Game:
                 wins.append(p)
             elif self.win == "Мафия" and rol == "Мафия":
                 wins.append(p)
-            else:
+            elif self.win == "Мирные жители" and rol == "Мирные жители":
                 wins.append(p)
         fm = ""
         for r, p in roles.items():
