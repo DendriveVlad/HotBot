@@ -18,6 +18,7 @@ class CButton(Button):
         thread = await interaction.channel.create_thread(name=f"{self.label}-{interaction.user}", message=m)
         try:
             await interaction.response.send_message(f"Перейдите в ветку {thread.mention} и ответьте на вопросы", ephemeral=True)
+            await self.bot.send_log(log_type="MinecraftRequestCreate", info=f"Создал заявку {thread.mention}", member=interaction.user)
         except nextcord.errors.NotFound:
             pass
         await m.delete()
@@ -59,147 +60,71 @@ class Confirm(View):
 async def threadEngine(thread: Thread, member: Member, bot):
     rtype = thread.name.split("-")[0]
     try:
-        m = await thread.send(f"Cкажите, как Вас зовут?")
-        text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        name = text.content
-
-        m = await thread.send("Сколько Вам лет?")
-        text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        age = text.content
-
-        m = await thread.send("Расскажите немного о себе (У Вас 10 минут, иначе ветка удалится)")
-        text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        about = text.content
-
-        if rtype == "Другое":
-            m = await thread.send("Был ли у Вас хоть какой-то опыт работы на серверах? Если да, то распишите какой.")
-        else:
-            m = await thread.send("Какой у вас опыт работы в данной сфере?")
-        text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        exp = text.content
-
-        m = await thread.send("Почему Вы хотите присоединиться к нашему проекту?")
-        text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        join_reason = text.content
-
-        m = await thread.send("Сколько Вы готовы уделять времени проекту?")
-        text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        spend_time = text.content
-
-        m = await thread.send("Чего бы вы хотели от проекта?")
-        text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        needs = text.content
-
+        q, q2, q3 = "", "", ""
         match rtype:
             case "Строительство":
-                m = await thread.send("Насколько хорошо Вы умеете работать с плагинами и модами для строительства?")
+                q = "Насколько хорошо Вы умеете работать с плагинами и модами для строительства?"
+                q2 = "Что Вы умеете делать?"
+                q3 = "Отправьте примеры своих работ (Хотя бы 3 скриншота)"
             case "Квесты":
-                m = await thread.send("На сколько хорошо Вы знаете русский язык?")
+                q = "На сколько хорошо Вы знаете русский язык?"
+                q2 = "Чем бы Вы хотели заниматься на проекте?"
+                q3 = "Какие из популярных аниме Вы знаете?"
             case "Дизайн":
-                m = await thread.send("В каких программах Вы работаете?")
+                q = "В каких программах Вы работаете?"
+                q2 = "Чем бы Вы хотели заниматься на проекте?"
+                q3 = "Отправьте примеры своих работ (Хотя бы 3 скриншота)"
             case "Программирование":
-                m = await thread.send("Какие языки программирования Вы знаете?")
+                q = "Какие языки программирования Вы знаете?"
+                q2 = "Чем бы Вы хотели заниматься на проекте?"
             case "Другое":
-                m = await thread.send("Что Вы умеете?")
-        text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
+                q = "Что Вы умеете?"
+                q2 = "Чем бы Вы хотели заниматься на проекте?"
+        request = {}
+        for mess in (("name", "Cкажите, как Вас зовут?"),
+                     ("age", "Сколько Вам лет?"),
+                     ("about", "Расскажите немного о себе (У Вас 10 минут, иначе ветка удалится)"),
+                     ("exp", "Был ли у Вас хоть какой-то опыт работы на серверах? Если да, то распишите какой."),
+                     ("join_reason", "Почему Вы хотите присоединиться к нашему проекту?"),
+                     ("spend_time", "Сколько Вы готовы уделять времени проекту?"),
+                     ("needs", "Чего бы вы хотели от проекта?"),
+                     ("skill", q),
+                     ("doing", q2),
+                     ("works", q3)):
+            if mess[-1]:
+                m = await thread.send(mess)
+                text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
 
-        acceptation = await confirm(thread, member, bot, text)
-        if acceptation:
-            text = acceptation
-        await m.delete()
-        await text.delete()
-        skill = text.content
+                acceptation = await confirm(thread, member, bot, text)
+                if acceptation:
+                    text = acceptation
+                await m.delete()
+                await text.delete()
+                request[mess[0]] = text.content
 
-        doing = None
-        if rtype != "Строительство":
-            if rtype == "Программирование":
-                m = await thread.send("Что Вы умеете делать?")
-            else:
-                m = await thread.send("Чем бы Вы хотели заниматься на проекте?")
-            text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-            acceptation = await confirm(thread, member, bot, text, last=True if rtype not in ("Дизайн", "Квесты") else False)
-            if acceptation:
-                text = acceptation
-            await m.delete()
-            await text.delete()
-            doing = text.content
-
-        works = None
-        if rtype in ("Строительство", "Дизайн"):
-            m = await thread.send("Скиньте примеры своих работ (Хотя бы 3 скриншота)")
-            text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-            acceptation = await confirm(thread, member, bot, text, last=True)
-            if acceptation:
-                text = acceptation
-            await m.delete()
-        if rtype == "Квесты":
-            m = await thread.send("Какие из популярных аниме Вы знаете?")
-            text = await bot.wait_for("message", timeout=600, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
-
-            acceptation = await confirm(thread, member, bot, text, last=True)
-            if acceptation:
-                text = acceptation
-            await text.delete()
-            await m.delete()
-            works = text.content
     except TimeoutError:
         await thread.delete()
+        await bot.send_log(log_type="MinecraftRequestRemove", info="Заявка удалена", member=member)
         return
 
-    info = [f"**Имя:** {name}", f"**Возраст:** {age}", f"**Личная информация:** {about}", f"**Опыт работы:** {exp}", f"**Мотивы:** {join_reason}", f"**Свободное время:** {spend_time}", f"**Желания:** {needs}", f"**Умения:** {skill}"]
-    if doing:
-        info.append(f"**Желаемый род занятий:** {doing}")
-    if works and rtype == "Квесты":
-        info.append(f"**Известные аниме:** {works}")
+    info = [f"**Имя:** {request['name']}",
+            f"**Возраст:** {request['age']}",
+            f"**Личная информация:** {request['about']}",
+            f"**Опыт работы:** {request['exp']}",
+            f"**Мотивы:** {request['join_reason']}",
+            f"**Свободное время:** {request['spend_time']}",
+            f"**Желания:** {request['needs']}",
+            f"**Умения:** {request['skill']}"]
+    if request['doing']:
+        info.append(f"**Желаемый род занятий:** {request['doing']}")
+    if request['works'] and rtype == "Квесты":
+        info.append(f"**Известные аниме:** {request['works']}")
 
     await thread.send(f"{member.mention} создал заявку", embed=Embed(title=rtype, description="\n".join(info)))
 
     admin = utils.get(thread.guild.channels, id=CHANNELS["admin_requests"])
-    await admin.send(f"@everyone Поступила новая заявка: {thread.mention}")
+    await bot.send_log(log_type="MinecraftRequestComplete", info=f"Заявка заполнена {thread.mention}", member=member)
+    await admin.send(f"<@455008287188844544> Поступила новая заявка: {thread.mention}")
 
 
 async def confirm(thread, member, bot, text, last=False):
