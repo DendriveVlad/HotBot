@@ -132,11 +132,11 @@ class Bot(commands.Bot):
                     return
 
     async def on_message_delete(self, message: Message):
+        await sleep(0.1)
         if type(message.channel) is DMChannel or message.channel.category_id in CATEGORIES.values() or message.author.id in self.spam_count:
             return
 
         mod = None
-        await sleep(0.1)
         async for deleted_message in message.guild.audit_logs(limit=3, action=AuditLogAction.message_delete):
             if int(time()) - int(deleted_message.created_at.timestamp()) <= 60 and deleted_message.target.id == message.author.id:
                 mod = deleted_message.user

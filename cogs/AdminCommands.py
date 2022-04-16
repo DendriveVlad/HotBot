@@ -13,8 +13,8 @@ db = DB()
 class Admin(commands.Cog):
     def __init__(self, client):
         self.client = client
-        self.guild = None
-        self.channel = None
+        self.guild = client.get_guild(SERVER_ID)
+        self.channel = self.guild.get_channel(CHANNELS["staff"])
 
     @slash_command(name="channel-ban", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_ban(self, interaction: Interaction, str_member: str, str_channel: str):
@@ -64,11 +64,6 @@ class Admin(commands.Cog):
         await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
     async def checks(self, interaction: Interaction, checks, **other) -> bool:
-        if not self.guild:
-            self.guild = interaction.guild
-        if not self.channel:
-            self.channel = self.guild.get_channel(CHANNELS["staff"])
-
         await self.send_log(log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *[str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
 
         if "1" in checks:
@@ -156,6 +151,7 @@ class Admin(commands.Cog):
             for field in fields:
                 embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
         await channel.send(embed=embed)
+
 
 def setup(client):
     client.add_cog(Admin(client))
