@@ -113,8 +113,20 @@ class Bot(commands.Bot):
 
         if message.channel.id in LEVEL_ALLOWED_TEXT_CHANNELS:
             date = db.select("users", f"user_id == {message.author.id}", "points", "last_message")
-            if not date["points"] and message.content.lower().replace("!", "").replace(".", "").replace(",", "").replace("\\", "") in ("прив", "ку", "хай", "куку", "хеллоу", "дарова", "привет", "привет всем", "всем ку", "ку всем", "здравствуйте", "здарова", "приветики", "приветик"):
-                await message.reply(choice(("Дарова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
+            if not date["points"]:
+                import difflib
+
+                def get_exact_words(input_str):
+                    exact_words = difflib.get_close_matches(input_str, ("привет", "всем", "ку", "хай", "здарова", "хеллоу", "здравствуйте"), n=1, cutoff=0.7)
+                    if len(exact_words) > 0:
+                        return exact_words[0]
+                    else:
+                        return input_str
+
+                words = [get_exact_words(word) for word in message.content.lower().split(' ')]
+                if len(words) <= 5 and message.content.lower().split(' ') != words:
+                    await message.reply(choice(("Дарова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
+
             if int(time()) > date["last_message"] + 20:
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
                 await level_up(self, date["points"], date["points"] + 10, message.author.id)
@@ -293,7 +305,7 @@ class Bot(commands.Bot):
 
     async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
         channel = utils.get(self.get_guild(SERVER_ID).channels, id=CHANNELS["logs"])
-        print(f"[{ct()}] {member.id, log_type, info}")
+        print(f"[{ct()}] {' '.join((str(member.id), log_type, info))}")
         embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
         if member:
             embed.set_author(
