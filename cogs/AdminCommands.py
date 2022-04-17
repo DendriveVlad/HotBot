@@ -149,7 +149,7 @@ class Admin(commands.Cog):
 
     async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
         channel = utils.get(self.guild.channels, id=CHANNELS["logs"])
-        print(f"[{ct()}] {member.id, log_type, info}")
+        print(f"[{ct()}] {' '.join((str(member.id), log_type, info))}")
         embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
         if member:
             embed.set_author(

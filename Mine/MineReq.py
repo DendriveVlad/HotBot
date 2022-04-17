@@ -18,7 +18,7 @@ class CButton(Button):
         thread = await interaction.channel.create_thread(name=f"{self.label}-{interaction.user}", message=m)
         try:
             await interaction.response.send_message(f"Перейдите в ветку {thread.mention} и ответьте на вопросы", ephemeral=True)
-            await self.bot.send_log(log_type="MinecraftRequestCreate", info=f"Создал заявку {thread.mention}", member=interaction.user)
+            await self.bot.send_log(log_type="MinecraftRequestCreate", info=f"Создал заявку {thread.mention}", member=interaction.user, color=0x2B9B41)
         except nextcord.errors.NotFound:
             pass
         await m.delete()
@@ -104,7 +104,7 @@ async def threadEngine(thread: Thread, member: Member, bot):
 
     except TimeoutError:
         await thread.delete()
-        await bot.send_log(log_type="MinecraftRequestRemove", info="Заявка удалена", member=member)
+        await bot.send_log(log_type="MinecraftRequestRemove", info="Заявка удалена", member=member, color=0x1E8031)
         return
 
     info = [f"**Имя:** {request['name']}",
@@ -123,7 +123,7 @@ async def threadEngine(thread: Thread, member: Member, bot):
     await thread.send(f"{member.mention} создал заявку", embed=Embed(title=rtype, description="\n".join(info)))
 
     admin = utils.get(thread.guild.channels, id=CHANNELS["admin_requests"])
-    await bot.send_log(log_type="MinecraftRequestComplete", info=f"Заявка заполнена {thread.mention}", member=member)
+    await bot.send_log(log_type="MinecraftRequestComplete", info=f"Заявка заполнена {thread.mention}", member=member, color=0x2B9B41)
     await admin.send(f"<@455008287188844544> Поступила новая заявка: {thread.mention}")
 
 
