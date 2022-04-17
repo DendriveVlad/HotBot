@@ -74,7 +74,7 @@ class Bot(commands.Bot):
             if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == user.id:
                 mod = kick.user
                 break
-        await self.send_log(log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=member, color=0xBF1818)
+        await self.send_log(log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=user, color=0xBF1818)
         db.delete("users", f"user_id == {user.id}")
 
     async def on_message(self, message: Message):
