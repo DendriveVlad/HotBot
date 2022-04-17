@@ -113,7 +113,7 @@ class Bot(commands.Bot):
 
         if message.channel.id in LEVEL_ALLOWED_TEXT_CHANNELS:
             date = db.select("users", f"user_id == {message.author.id}", "points", "last_message")
-            if not date["points"]:
+            if message.type != MessageType.reply and int(time()) - date["last_message"] > 60*60*5:
                 import difflib
 
                 def get_exact_words(input_str):
