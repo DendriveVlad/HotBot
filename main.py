@@ -124,8 +124,11 @@ class Bot(commands.Bot):
                         return input_str
 
                 words = [get_exact_words(word) for word in message.content.lower().split(' ')]
-                if len(words) <= 5 and message.content.lower().split(' ') != words:
-                    await message.reply(choice(("Дарова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
+                if len(words) < 5:
+                    for w in ("привет", "всем", "ку", "хай", "здарова", "хеллоу", "здравствуйте"):
+                        if w in words:
+                            await message.reply(choice(("Дарова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
+                        break
 
             if int(time()) > date["last_message"] + 20:
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
