@@ -43,7 +43,7 @@ class Admin(commands.Cog):
                   thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
                   member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
                   count: int = SlashOption(name="сколько", description="Количество")):
-        if not await self.__checks(interaction, "134578", member=member, count=count):
+        if not await self.__checks(interaction, "13457", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={int(count)})")
@@ -54,7 +54,7 @@ class Admin(commands.Cog):
                      thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
                      member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
                      count: int = SlashOption(name="сколько", description="Количество")):
-        if not await self.__checks(interaction, "134578", member=member, count=count):
+        if not await self.__checks(interaction, "13457", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] - int(count)})")
@@ -65,7 +65,7 @@ class Admin(commands.Cog):
                   thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
                   member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
                   count: int = SlashOption(name="сколько", description="Количество")):
-        if not await self.__checks(interaction, "134578", member=member, count=count):
+        if not await self.__checks(interaction, "13457", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] + int(count)})")
@@ -80,6 +80,16 @@ class Admin(commands.Cog):
         await self.send_log(log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *['<@' + i['value'] + '>' if i['name'] in ('кому', 'кого') else str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
 
     async def __checks(self, interaction: Interaction, checks, **other) -> bool:
+        """
+        :param checks:
+            1 - Проверка на права администратора
+            2 - Проверка на права модератора
+            3 - Проверка на админ-бот канал
+            4 - Проверка на заданного бота-пользователя
+            5 - Проверка на правильность заданного канала
+            6 - Проверка на отрицательное значение в count
+            7 - Проверка на слишком большое значение в count
+        """
         if "1" in checks:
             mod = False
             for r in interaction.user.roles:
@@ -104,23 +114,19 @@ class Admin(commands.Cog):
             await interaction.response.send_message(embed=Embed(title=f"Данное действие разрешено только в канале #{self.channel.name}", colour=0xBF1818), ephemeral=True)
             return False
 
-        if "4" in checks and not other["member"]:
-            await interaction.response.send_message(embed=Embed(title="Не верно задан пользователь", colour=0xBF1818), ephemeral=True)
-            return False
-
-        if "5" in checks and other["member"].bot:
+        if "4" in checks and other["member"].bot:
             await interaction.response.send_message(embed=Embed(title="Использование команд на ботов отключено", colour=0xBF1818), ephemeral=True)
             return False
 
-        if "6" in checks and not other["channel"]:
+        if "5" in checks and not other["channel"]:
             await interaction.response.send_message(embed=Embed(title="Не верно задан канал", colour=0xBF1818), ephemeral=True)
             return False
 
-        if "7" in checks and int(other["count"]) < 0:
+        if "6" in checks and int(other["count"]) < 0:
             await interaction.response.send_message(embed=Embed(title="Участник не может иметь отрицательное количество золота или очков", colour=0xBF1818), ephemeral=True)
             return False
 
-        if "8" in checks and (int(other["count"]) > 500000):
+        if "7" in checks and (int(other["count"]) > 500000):
             await interaction.response.send_message(embed=Embed(title="Введено слишком большое число", colour=0xBF1818), ephemeral=True)
             return False
 
