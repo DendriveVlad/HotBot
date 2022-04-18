@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 from requests import get
 
 from config import LEVEL_POINTS
@@ -12,9 +12,8 @@ def get_rank(guild, member_id, db):
     user = guild.get_member(member_id)
     try:
         avatar = Image.open(BytesIO(get(str(user.avatar.url), stream=True).content)).convert("RGBA").resize((300, 300), Image.ANTIALIAS)
-    except AttributeError:
+    except AttributeError | UnidentifiedImageError:
         avatar = Image.open("default_avatar.png")
-
 
     front = Image.open("/home/nehot/Bot/image_processing/front.png")
 

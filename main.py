@@ -12,6 +12,7 @@ from config import *
 from pv_control_panel import voice_control_panel
 from image_processing.UsersInfo import top, level_up
 from games.hub import hub
+# from RolesMarket import rolesManager
 from Mine.MineReq import requests
 
 __author__ = "Vladi4ka | DendriveVlad | Deadly"
@@ -40,6 +41,7 @@ class Bot(commands.Bot):
             self.check.start()
         await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
         await requests(utils.get(guild.channels, id=CHANNELS["requests"]), self)
+        # await rolesManager(utils.get(guild.channels, id=CHANNELS["RolesMarket"]), self, db)
         self.loop.create_task(top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db))
         print(ct(), "Hello!")
 
@@ -113,11 +115,12 @@ class Bot(commands.Bot):
 
         if message.channel.id in LEVEL_ALLOWED_TEXT_CHANNELS:
             date = db.select("users", f"user_id == {message.author.id}", "points", "last_message")
-            if message.type != MessageType.reply and int(time()) - date["last_message"] > 60*60*5:
+            if message.type != MessageType.reply and int(time()) - date["last_message"] > 60 * 60 * 5:
                 import difflib
+                right_words = ("привет", "прив", "ку", "хай", "здорова", "хеллоу", "здравствуйте", "алоха", "бонжур", "hello", "hi", "bonjour")
 
                 def get_exact_words(input_str):
-                    exact_words = difflib.get_close_matches(input_str, ("привет", "всем", "ку", "хай", "здарова", "хеллоу", "здравствуйте"), n=1, cutoff=0.7)
+                    exact_words = difflib.get_close_matches(input_str, right_words, n=1, cutoff=0.7)
                     if len(exact_words) > 0:
                         return exact_words[0]
                     else:
@@ -125,10 +128,10 @@ class Bot(commands.Bot):
 
                 words = [get_exact_words(word) for word in message.content.lower().split(' ')]
                 if len(words) < 5:
-                    for w in ("привет", "всем", "ку", "хай", "здарова", "хеллоу", "здравствуйте"):
+                    for w in right_words:
                         if w in words:
-                            await message.reply(choice(("Дарова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
-                        break
+                            await message.reply(choice(("Здорова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
+                            break
 
             if int(time()) > date["last_message"] + 20:
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
@@ -297,10 +300,10 @@ class Bot(commands.Bot):
                     await after.remove_roles(old)
                 elif old not in before.roles:
                     await after.remove_roles(new)
-        elif before.timeout != after.timeout:
-            if after.timeout:
-                await self.send_log(log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут будет действовать до:", f"<t:{int(after.timeout.timestamp())}>"), color=0xE5AE46)
-            elif before.timeout:
+        elif before.communication_disabled_until != after.communication_disabled_until:
+            if after.communication_disabled_until:
+                await self.send_log(log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут будет действовать до:", f"<t:{int(after.communication_disabled_until.timestamp())}>"), color=0xE5AE46)
+            elif before.communication_disabled_until:
                 await self.send_log(log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
         elif before.nick != after.nick:
             await self.send_log(log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),

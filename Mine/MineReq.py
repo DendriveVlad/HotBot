@@ -91,6 +91,7 @@ async def threadEngine(thread: Thread, member: Member, bot):
                      ("skill", q),
                      ("doing", q2),
                      ("works", q3)):
+            request[mess[0]] = None
             if mess[-1]:
                 m = await thread.send(mess[-1])
                 text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)

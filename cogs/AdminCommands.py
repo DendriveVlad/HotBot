@@ -16,61 +16,70 @@ class Admin(commands.Cog):
         self.guild = None
         self.channel = None
 
-    @slash_command(name="channel-ban", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
-    async def channel_ban(self, interaction: Interaction, str_member: str, str_channel: str):
-        self.__check_data(interaction.guild)
-        member = self.__get_member(str_member)
-        ban_channel = self.__get_channel(str_channel)
-        if not await self.__checks(interaction, "13456", member=member, channel=ban_channel):
+    @slash_command(name="заблокировать-в-канале", description="Заблокировать участника в определённом канале", guild_ids=[SERVER_ID])
+    async def channel_ban(self, interaction: Interaction,
+                          member: Member = SlashOption(name="кого", description="Упоминание участника"),
+                          use_channel: str = SlashOption(name="где", description="Упоминание канала")):
+        channel = self.__get_channel(use_channel)
+        if not await self.__checks(interaction, "23456", member=member, channel=channel):
             return
 
-        await ban_channel.set_permissions(member, read_messages=False)
-        await interaction.response.send_message(embed=Embed(title=f"Участник заблокирован в канале {ban_channel}", colour=0x21F300), ephemeral=False)
+        await channel.set_permissions(member, read_messages=False)
+        await interaction.response.send_message(embed=Embed(title=f"Участник заблокирован в канале {channel}", colour=0x21F300), ephemeral=False)
 
-    @slash_command(name="channel-unban", description="Разблокировать  участника в определённом канале", guild_ids=[SERVER_ID])
-    async def channel_unban(self, interaction: Interaction, str_member: str, str_channel: str):
-        self.__check_data(interaction.guild)
-        member = self.__get_member(str_member)
-        ban_channel = self.__get_channel(str_channel)
-        if not await self.__checks(interaction, "13456", member=member, channel=ban_channel):
+    @slash_command(name="разблокировать-в-канале", description="Разблокировать  участника в определённом канале", guild_ids=[SERVER_ID])
+    async def channel_unban(self, interaction: Interaction,
+                            member: Member = SlashOption(name="кого", description="Упоминание участника"),
+                            use_channel: str = SlashOption(name="где", description="Упоминание канала")):
+        channel = self.__get_channel(use_channel)
+        if not await self.__checks(interaction, "23456", member=member, channel=channel):
             return
 
-        await ban_channel.set_permissions(member, read_messages=None)
-        await interaction.response.send_message(embed=Embed(title=f"Участник разблокирован в канале {ban_channel}", colour=0x21F300), ephemeral=False)
+        await channel.set_permissions(member, read_messages=None)
+        await interaction.response.send_message(embed=Embed(title=f"Участник разблокирован в канале {channel}", colour=0x21F300), ephemeral=False)
 
-    @slash_command(name="set", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
-    async def set(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"Золото": "gold", "Очки": "points"}), str_member: str = None, count: int = 0):
-        self.__check_data(interaction.guild)
-        member = self.__get_member(str_member)
-        if not await self.__checks(interaction, "234578", member=member, count=count):
+    @slash_command(name="изменить", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
+    async def set(self, interaction: Interaction,
+                  thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
+                  member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
+                  count: int = SlashOption(name="сколько", description="Количество")):
+        if not await self.__checks(interaction, "134578", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={int(count)})")
         await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
-    @slash_command(name="remove", description="Удалить определённое количество золота или опыта у участника", guild_ids=[SERVER_ID])
-    async def remove(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"Золото": "gold", "Очки": "points"}), str_member: str = None, count: int = 0):
-        self.__check_data(interaction.guild)
-        member = self.__get_member(str_member)
-        if not await self.__checks(interaction, "234578", member=member, count=count):
+    @slash_command(name="удалить", description="Удалить определённое количество золота или опыта у участника", guild_ids=[SERVER_ID])
+    async def remove(self, interaction: Interaction,
+                     thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
+                     member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
+                     count: int = SlashOption(name="сколько", description="Количество")):
+        if not await self.__checks(interaction, "134578", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] - int(count)})")
         await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
-    @slash_command(name="add", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
-    async def add(self, interaction: Interaction, thing: str = SlashOption(name="thing", description="gold/points", choices={"Золото": "gold", "Очки": "points"}), str_member: str = None, count: int = 0):
-        self.__check_data(interaction.guild)
-        member = self.__get_member(str_member)
-        if not await self.__checks(interaction, "234578", member=member, count=count):
+    @slash_command(name="добавить", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
+    async def add(self, interaction: Interaction,
+                  thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
+                  member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
+                  count: int = SlashOption(name="сколько", description="Количество")):
+        if not await self.__checks(interaction, "134578", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] + int(count)})")
         await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
 
-    async def __checks(self, interaction: Interaction, checks, **other) -> bool:
-        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *[str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
+    async def cog_application_command_before_invoke(self, interaction: Interaction) -> None:
+        if not self.guild:
+            self.guild = interaction.guild
+        if not self.channel:
+            self.channel = self.guild.get_channel(CHANNELS["staff"])
 
+        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *['<@' + i['value'] + '>' if i['name'] in ('кому', 'кого') else str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
+
+    async def __checks(self, interaction: Interaction, checks, **other) -> bool:
         if "1" in checks:
             mod = False
             for r in interaction.user.roles:
@@ -117,28 +126,6 @@ class Admin(commands.Cog):
 
         return True
 
-    def __check_data(self, guild):
-        if not self.guild:
-            self.guild = guild
-        if not self.channel:
-            self.channel = self.guild.get_channel(CHANNELS["staff"])
-
-    def __get_member(self, str_member: str) -> Member | None:
-        if len(str_member) in [21, 22] and str_member[0:2] == "<@" and str_member[-1] == ">":
-            try:
-                return self.guild.get_member(int(str_member[-19:-1]))
-            except ValueError:
-                pass
-            except AttributeError:
-                return None
-        for user in self.guild.members:
-            if user.nick:
-                if user.nick.lower() == str_member.lower():
-                    return user
-            elif user.name.lower() == str_member.lower():
-                return user
-        return None
-
     def __get_channel(self, str_channel) -> TextChannel | None:
         if len(str_channel) == 21 and str_channel[0:2] == "<#" and str_channel[-1] == ">":
             try:
@@ -162,6 +149,7 @@ class Admin(commands.Cog):
             for field in fields:
                 embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
         await channel.send(embed=embed)
+
 
 def setup(client):
     client.add_cog(Admin(client))
