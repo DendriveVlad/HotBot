@@ -71,7 +71,7 @@ class Click(Button):
                     plus_exp = 25 + (5 * date["rewards_count"]) * ((date["rewards_count"] // 2) + 1) + (35 if date["rewards_count"] == 7 else 0)
                     self.db.update("users", f"user_id == {interaction.user.id}", points=date["points"] + plus_exp, gold=date["gold"] + plus_gold + int(bonus_gold_level + bonus_gold_status), last_reward=dt + (60 * 60 * 24), rewards_count=date["rewards_count"])
                     mess_level = f"(+{int(bonus_gold_level + bonus_gold_status)}: " \
-                                 f"{('бонус за уровень ' + str(2 * level) + '%' if bonus_gold_level else '') + (', ' if bonus_gold_level and bonus_gold_status else '') + ('бонус за статус ' + str(int(percent * 100)) + '%' if bonus_gold_level else '')})" if bonus_gold_level or bonus_gold_status else ""
+                                 f"{('бонус за уровень ' + str(2 * level) + '%' if bonus_gold_level else '') + (', ' if bonus_gold_level and bonus_gold_status else '') + ('бонус за статус ' + str(int(percent * 100)) + '%' if bonus_gold_status else '')})" if bonus_gold_level or bonus_gold_status else ""
 
                     await interaction.response.send_message(
                         embed=Embed(title="Поздравляю!", description=f"<@{interaction.user.id}>, Вы получили: \n"
