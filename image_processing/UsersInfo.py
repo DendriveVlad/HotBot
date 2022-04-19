@@ -8,6 +8,7 @@ from nextcord.ui import Button, View
 from image_processing.top import get_top
 from image_processing.rank import get_rank
 from config import LEVEL_POINTS, CHANNELS, SERVER_ID, ROLES
+from info import send_log
 
 
 class Click(Button):
@@ -111,7 +112,7 @@ async def level_up(bot, old_points, new_points, member_id):
             channel = utils.get(bot.get_guild(SERVER_ID).channels, id=CHANNELS["Top"])
             await channel.send(f"<@{member_id}>", embed=Embed(description=f"Поздравляю с достижением нового уровня!\n"
                                                                           f"Теперь Ваш уровень: **{level}**", colour=0x21F300), delete_after=20)
-            await bot.send_log(log_type="MemberNewLevel", info=f"Получил уровень {level}", member=bot.get_user(member_id))
+            await send_log(guild=channel.guild, log_type="MemberNewLevel", info=f"Получил уровень {level}", member=bot.get_user(member_id))
 
             if level == 30:
                 await channel.send(embed=Embed(description=f"😱 <@{member_id}> достиг последнего уровня!", color=0xFF6060), delete_after=3600)

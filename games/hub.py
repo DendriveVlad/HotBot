@@ -5,6 +5,7 @@ from nextcord.ui import View, button
 
 from games.potato import potato_game
 from games.mafia import mafia_game
+from info import send_log
 
 
 async def is_player_in_game(member, db):
@@ -69,7 +70,7 @@ class ChoiceGame(View):
             case "mafia":
                 self.bot.loop.create_task(mafia_game(room, interaction.user.id, self.bot, self.db, interaction.channel))
         await interaction.response.send_message(f"Игра создана. Перейдите в канал с игрой <#{room.id}>.", ephemeral=True)
-        await self.bot.send_log(log_type="GameCreate", info=f"Создал игру {game}-{game_number}", member=interaction.user, color=0xE160F9)
+        await send_log(guild=interaction.guild, log_type="GameCreate", info=f"Создал игру {game}-{game_number}", member=interaction.user, color=0xE160F9)
 
 
 async def hub(channel, bot, db):
