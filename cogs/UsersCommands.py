@@ -61,8 +61,7 @@ class Commands(commands.Cog):
         role = await interaction.guild.create_role(reason="Создал приватную роль", name=role_name, colour=color)
         await role.edit(position=len(interaction.guild.roles) - 2)
         await interaction.user.add_roles(role)
-        # db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] - 500, role=role.id, role_paid_time=int(time()))
-        db.update("users", f"user_id == {interaction.user.id}", role=role.id, role_paid_time=int(time()))
+        db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] - 500, role=role.id, role_paid_time=int(time()))
         await interaction.response.send_message(embed=Embed(title="Роль создана", description=f"Вы получили свою новую роль {role.mention}.\n"
                                                                                               f"Для поддержания роли требуется **200** золота в неделю. Первое списание будет через неделю. Если у Вас будет недостаточно золота, то роль удалится.\n"
                                                                                               f"Изменение цвета или названия роли стоит **100** золота.", color=0x21F300), ephemeral=True)
@@ -102,7 +101,7 @@ class Commands(commands.Cog):
             await role.edit(colour=color)
         else:
             await role.edit(name=role_name)
-        # db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] - 100)
+        db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] - 100)
         await interaction.response.send_message(embed=Embed(title="Роль изменена", color=0x21F300), ephemeral=True)
 
     @slash_command(name="удалить-роль", description="Удалить свою роль", guild_ids=[SERVER_ID])

@@ -44,7 +44,7 @@ class Admin(commands.Cog):
                   thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
                   member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
                   count: int = SlashOption(name="сколько", description="Количество")):
-        if not await self.__checks(interaction, "13457", member=member, count=count):
+        if not await self.__checks(interaction, "13467", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={int(count)})")
@@ -55,7 +55,7 @@ class Admin(commands.Cog):
                      thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
                      member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
                      count: int = SlashOption(name="сколько", description="Количество")):
-        if not await self.__checks(interaction, "13457", member=member, count=count):
+        if not await self.__checks(interaction, "13467", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] - int(count)})")
@@ -66,11 +66,27 @@ class Admin(commands.Cog):
                   thing: str = SlashOption(name="что", description="Золото/Очки", choices={"Золото": "gold", "Очки": "points"}),
                   member: Member = SlashOption(name="кому", description="Упоминание пользователя"),
                   count: int = SlashOption(name="сколько", description="Количество")):
-        if not await self.__checks(interaction, "13457", member=member, count=count):
+        if not await self.__checks(interaction, "13467", member=member, count=count):
             return
 
         eval(f"db.update('users', 'user_id == {member.id}', {thing}={db.select('users', f'user_id == {member.id}', thing)[thing] + int(count)})")
         await interaction.response.send_message(embed=Embed(title=f"Данные участника {member} обновлены", colour=0x21F300), ephemeral=False)
+
+    @slash_command(name="о-участнике", description="Добавить определённое количество золота или опыта участнику", guild_ids=[SERVER_ID])
+    async def get_member(self, interaction: Interaction, member: Member = SlashOption("кто", description="Упоминание пользователя")):
+        if not await self.__checks(interaction, "24", member=member):
+            return
+
+        user_db = db.select("users", f"user_id == {member.id}")
+        embed = Embed(title=f"Информация о участнике", colour=0x2EB8CD)
+        embed.set_author(
+            name=member,
+            icon_url=member.avatar.url if member.avatar else Embed.Empty
+        )
+        for k, v in user_db.items():
+            embed.add_field(name=k, value=v)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def cog_application_command_before_invoke(self, interaction: Interaction) -> None:
         if not self.guild:
@@ -78,7 +94,7 @@ class Admin(commands.Cog):
         if not self.channel:
             self.channel = self.guild.get_channel(CHANNELS["staff"])
 
-        await send_log(guild=self.guild, log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *['<@' + i['value'] + '>' if i['name'] in ('кому', 'кого') else str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
+        await send_log(guild=self.guild, log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *['<@' + i['value'] + '>' if i['name'] in ('кому', 'кого', 'кто') else str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
 
     async def __checks(self, interaction: Interaction, checks, **other) -> bool:
         """
