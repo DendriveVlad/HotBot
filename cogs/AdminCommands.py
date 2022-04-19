@@ -6,6 +6,7 @@ from nextcord.ext import commands
 
 from config import *
 from DataBase import DB
+from info import send_log
 
 db = DB()
 
@@ -77,7 +78,7 @@ class Admin(commands.Cog):
         if not self.channel:
             self.channel = self.guild.get_channel(CHANNELS["staff"])
 
-        await self.send_log(log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *['<@' + i['value'] + '>' if i['name'] in ('кому', 'кого') else str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
+        await send_log(guild=self.guild, log_type="CommandUse", info=f"Использует команду **/{' '.join((interaction.data['name'], *['<@' + i['value'] + '>' if i['name'] in ('кому', 'кого') else str(i['value']) for i in interaction.data['options']]))}**", member=interaction.user)
 
     async def __checks(self, interaction: Interaction, checks, **other) -> bool:
         """
@@ -139,22 +140,6 @@ class Admin(commands.Cog):
             except ValueError:
                 pass
         return None
-
-    async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
-        channel = utils.get(self.guild.channels, id=CHANNELS["logs"])
-        print(f"[{ct()}] {' '.join((str(member.id), log_type, info))}")
-        embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
-        if member:
-            embed.set_author(
-                name=member,
-                icon_url=member.avatar.url if member.avatar else Embed.Empty
-            )
-        if isinstance(fields, tuple):
-            embed.add_field(name=fields[0], value=fields[-1] if len(fields[-1]) else "~~не текст~~")
-        elif isinstance(fields, list):
-            for field in fields:
-                embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
-        await channel.send(embed=embed)
 
 
 def setup(client):

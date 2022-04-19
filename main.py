@@ -1,18 +1,17 @@
 import os
 from asyncio import sleep
-from datetime import datetime
 from time import time, ctime as ct
 from random import choice
 
-from nextcord import *
+from nextcord import Intents, utils, Member, VoiceState, errors, AuditLogAction, Guild, User, Message, DMChannel, MessageType, Embed, PermissionOverwrite
 from nextcord.ext import tasks, commands
 
 from DataBase import DB
 from config import *
+from info import send_log
 from pv_control_panel import voice_control_panel
 from image_processing.UsersInfo import top, level_up
 from games.hub import hub
-# from RolesMarket import rolesManager
 from Mine.MineReq import requests
 
 __author__ = "Vladi4ka | DendriveVlad | Deadly"
@@ -41,7 +40,6 @@ class Bot(commands.Bot):
             self.check.start()
         await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
         await requests(utils.get(guild.channels, id=CHANNELS["requests"]), self)
-        # await rolesManager(utils.get(guild.channels, id=CHANNELS["RolesMarket"]), self, db)
         self.loop.create_task(top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db))
         print(ct(), "Hello!")
 
@@ -58,7 +56,7 @@ class Bot(commands.Bot):
         if not db.select("users", f"user_id == {member.id}"):
             db.insert("users", user_id=member.id, connection_date=int(time()))
         await member.add_roles(utils.get(member.guild.roles, id=ROLES["Newbie"]))
-        await self.send_log(log_type="MemberJoin", info="Подключился к серверу", member=member, color=0x21F300)
+        await send_log(guild=member.guild, log_type="MemberJoin", info="Подключился к серверу", member=member, color=0x21F300)
 
     async def on_member_remove(self, member: Member):
         if member.pending:
@@ -68,7 +66,7 @@ class Bot(commands.Bot):
             if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == member.id:
                 mod = kick.user
                 break
-        await self.send_log(log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, color=0xBF1818)
+        await send_log(guild=member.guild, log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, color=0xBF1818)
 
     async def on_member_ban(self, guild: Guild, user: User | Member):
         mod = None
@@ -76,14 +74,14 @@ class Bot(commands.Bot):
             if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == user.id:
                 mod = kick.user
                 break
-        await self.send_log(log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=user, color=0xBF1818)
+        await send_log(guild=guild, log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=user, color=0xBF1818)
         db.delete("users", f"user_id == {user.id}")
 
     async def on_message(self, message: Message):
         if message.author.id == BOT_ID:
             return
         if type(message.channel) is DMChannel:
-            await self.send_log(log_type="Гений", member=message.author, fields=("Пишет мне в ЛС следующее сообщение:", message.content), color=0x766EFF)
+            await send_log(guild=message.guild, log_type="Гений", member=message.author, fields=("Пишет мне в ЛС следующее сообщение:", message.content), color=0x766EFF)
             async for h in message.channel.history(limit=10):
                 if h.author.id == BOT_ID:
                     return
@@ -104,7 +102,7 @@ class Bot(commands.Bot):
                 link = ".".join(message.content[message.content.index("https://"):].split("/")[2].split(".")[-2:])
                 if link not in ALLOWED_LINKS:
                     await message.delete()
-                    await self.send_log(log_type="StopSpam", member=message.author, fields=("Удалено спам-сообщениее:", message.content), color=0xF9BA1C)
+                    await send_log(guild=message.guild, log_type="StopSpam", member=message.author, fields=("Удалено спам-сообщениее:", message.content), color=0xF9BA1C)
                     if self.spam_count.count(message.author.id) >= 2:
                         await message.author.ban(reason="Spam")
                         return
@@ -160,24 +158,22 @@ class Bot(commands.Bot):
                 mod = deleted_message.user
                 break
 
-        await self.send_log(log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
+        await send_log(guild=message.guild, log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
 
     async def on_message_edit(self, before: Message, after: Message):
         if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID or (not before.attachments and after.attachments):
             return
 
         if len(after.content) + len(before.content) <= 256:
-            await self.send_log(log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author, fields=[("До:", before.content), ("После:", after.content)], color=0x285064)
+            await send_log(guild=before.guild, log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author, fields=[("До:", before.content), ("После:", after.content)], color=0x285064)
             return
 
         index = 0
         for char in after.content:
             if len(before.content) == index + 1:
-                await self.send_log(f"[MessageEdit] Сообщение **...{before.content[index - 20:]}** от <@{after.author.id}> в канале <#{after.channel.id}> изменено на "
-                                    f"**...{after.content[index - 20:] if len(after.content[index - 20:]) <= 256 else after.content[index - 20:index + 60] + '...'}**", 0x285064)
-                await self.send_log(log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author,
-                                    fields=[("До:", before.content[index - 20:]), ("После:", after.content[index - 20:] if len(after.content[index - 20:]) <= 256 else after.content[index - 20:index + 60] + '...')],
-                                    color=0x285064)
+                await send_log(guild=before.guild, log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author,
+                               fields=[("До:", before.content[index - 20:]), ("После:", after.content[index - 20:] if len(after.content[index - 20:]) <= 256 else after.content[index - 20:index + 60] + '...')],
+                               color=0x285064)
                 return
 
             if before.content[index] != char:
@@ -201,14 +197,14 @@ class Bot(commands.Bot):
                     else:
                         new = "..." + after.content[index - 10:]
 
-                await self.send_log(log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author, fields=[("До:", old), ("После:", new)], color=0x285064)
+                await send_log(guild=before.guild, log_type="MessageEdit", info=f"Изменено сообщение в канале {after.channel.mention}", member=after.author, fields=[("До:", old), ("После:", new)], color=0x285064)
 
                 return
             index += 1
 
     async def on_voice_state_update(self, member: Message, before: VoiceState, after: VoiceState):
         if not after.channel and before.channel:
-            await self.send_log(log_type="VoiceDisconnect", info="Вышел из голосового канала", member=member)
+            await send_log(guild=member.guild, log_type="VoiceDisconnect", info="Вышел из голосового канала", member=member)
             date = db.select("users", f"user_id == {member.id}", "points", "talk_time")
             new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
             db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
@@ -219,7 +215,7 @@ class Bot(commands.Bot):
                 new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
                 db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
                 await level_up(self, date["points"], new_points, member.id)
-            await self.send_log(log_type="VoiceConnect", info=f"Зашёл в канал {after.channel}", member=member)
+            await send_log(guild=member.guild, log_type="VoiceConnect", info=f"Зашёл в канал {after.channel}", member=member)
             if not before.channel:
                 db.update("users", f"user_id == {member.id}", talk_time=int(time()))
 
@@ -227,7 +223,7 @@ class Bot(commands.Bot):
             return
 
         while before.channel:
-            serv = before.channel.guild
+            serv = member.guild
             date = db.select("private_voices", f"channel_owner == {member.id}", "channel_id", "control_id")
             if before.channel.id not in IGNORE_VC and before.channel.category_id == CATEGORIES["Voice channels"]:
                 if len(before.channel.members) != 0:
@@ -256,13 +252,13 @@ class Bot(commands.Bot):
                 voice, text = utils.get(serv.voice_channels, id=date["channel_id"]), utils.get(serv.text_channels, id=date["control_id"])
                 await voice.delete()
                 await text.delete()
-                await self.send_log(log_type="RemovePrivateChannel", info=f"Приватный канал удалён", member=member)
+                await send_log(guild=serv, log_type="RemovePrivateChannel", info=f"Приватный канал удалён", member=member)
             break
         if after.channel:
             if after.channel.id == CHANNELS["createVC"]:
                 if db.select("private_voices", f"channel_owner == {member.id}"):
                     return
-                serv = after.channel.guild
+                serv = member.guild
                 overwrites_text = {
                     serv.default_role: PermissionOverwrite(view_channel=False),
                     member: PermissionOverwrite(view_channel=True, send_messages=True)
@@ -271,7 +267,7 @@ class Bot(commands.Bot):
                 await voice.set_permissions(member, view_channel=True, speak=True)
                 text = await serv.create_text_channel("панель-управления-каналом", category=after.channel.category, overwrites=overwrites_text)
                 db.insert("private_voices", channel_id=voice.id, channel_owner=member.id, control_id=text.id)
-                await self.send_log(log_type="CreatePrivateChannel", info=f"Приватный канал создан", member=member)
+                await send_log(guild=serv, log_type="CreatePrivateChannel", info=f"Приватный канал создан", member=member)
                 await member.move_to(channel=voice, reason="Создал канал для себя")
                 await text.send(f"<@{member.id}>", delete_after=1)
                 while 1:
@@ -287,11 +283,11 @@ class Bot(commands.Bot):
         if before.roles != after.roles:
             for role in after.roles:
                 if role not in before.roles:
-                    await self.send_log(log_type="MemberRoleGet", info=f"Получил роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD88A1F)
+                    await send_log(guild=before.guild, log_type="MemberRoleGet", info=f"Получил роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD88A1F)
                     break
             for role in before.roles:
                 if role not in after.roles:
-                    await self.send_log(log_type="MemberRoleRemove", info=f"Потерял роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD85A1F)
+                    await send_log(guild=before.guild, log_type="MemberRoleRemove", info=f"Потерял роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD85A1F)
                     break
             new = utils.get(before.guild.roles, id=ROLES["Newbie"])
             old = utils.get(before.guild.roles, id=ROLES["Old"])
@@ -302,35 +298,12 @@ class Bot(commands.Bot):
                     await after.remove_roles(new)
         elif before.communication_disabled_until != after.communication_disabled_until:
             if after.communication_disabled_until:
-                await self.send_log(log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут будет действовать до:", f"<t:{int(after.communication_disabled_until.timestamp())}>"), color=0xE5AE46)
+                await send_log(guild=before.guild, log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут будет действовать до:", f"<t:{int(after.communication_disabled_until.timestamp())}>"), color=0xE5AE46)
             elif before.communication_disabled_until:
-                await self.send_log(log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
+                await send_log(guild=before.guild, log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
         elif before.nick != after.nick:
-            await self.send_log(log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),
-                                                                                                                                                      ("На:", after.nick if after.nick else after.name)], color=0xE5AE46)
-
-    async def send_log(self, log_type: str, info: str = "", member: Member = None, fields: list = None, color: hex = 0x3B3B3B):
-        channel = utils.get(self.get_guild(SERVER_ID).channels, id=CHANNELS["logs"])
-        print(f"[{ct()}] {' '.join((str(member.id), log_type, info))}")
-        embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
-        if member:
-            embed.set_author(
-                name=member,
-                icon_url=member.avatar.url if member.avatar else Embed.Empty
-            )
-        if isinstance(fields, tuple):
-            embed.add_field(name=fields[0], value=fields[-1] if len(fields[-1]) else "~~не текст~~")
-        elif isinstance(fields, list):
-            for field in fields:
-                embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
-        await channel.send(embed=embed)
-
-    @staticmethod
-    async def get_level(member_id: int):
-        points = db.select("users", f"user_id == {member_id}", "points")["points"]
-        for level, need_points in LEVEL_POINTS.items():
-            if points < need_points:
-                return level - 1
+            await send_log(guild=before.guild, log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),
+                                                                                                                                                                     ("На:", after.nick if after.nick else after.name)], color=0xE5AE46)
 
     @tasks.loop(minutes=5)
     async def check(self):
@@ -342,14 +315,21 @@ class Bot(commands.Bot):
         channel = utils.get(guild.channels, id=CHANNELS["Online"])
         online_members = guild.member_count
         for member in guild.members:
+            member_data = db.select("users", f"user_id == {member.id}", "connection_date", "points", "gold", "role", "role_paid_time")
             if str(member.status) == "offline":
                 online_members -= 1
             elif utils.get(guild.roles, id=ROLES["Newbie"]) in member.roles:
-                member_data = db.select("users", f"user_id == {member.id}", "connection_date", "points")
                 if member_data:
                     if int(time()) - member_data["connection_date"] > 60 * 60 * 24 * 30 * 6 and member_data["points"] >= 1000:
                         await member.remove_roles(utils.get(guild.roles, id=ROLES["Newbie"]))
                         await member.add_roles(utils.get(guild.roles, id=ROLES["Old"]))
+            if member_data and member_data["role"] and int(time()) - member_data["role_paid_time"] > 60 * 60 * 24 * 7:
+                if member_data["gold"] < 200:
+                    await guild.get_role(member_data["role"]).delete(reason="Не хватает золота для списания")
+                    db.update("users", f"user_id == {member.id}", role=0, role_paid_time=0)
+                else:
+                    db.update("users", f"user_id == {member.id}", gold=member_data["gold"] - 200, role_paid_time=member_data["role_paid_time"] + 60 * 60 * 24 * 7)
+
         new_name = f"ОНЛАЙН: {online_members}/{guild.member_count}"
         if new_name == channel.name:
             return
