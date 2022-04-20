@@ -22,7 +22,7 @@ class Admin(commands.Cog):
                           member: Member = SlashOption(name="кого", description="Упоминание участника"),
                           use_channel: str = SlashOption(name="где", description="Упоминание канала")):
         channel = self.__get_channel(use_channel)
-        if not await self.__checks(interaction, "23456", member=member, channel=channel):
+        if not await self.__checks(interaction, "2345", member=member, channel=channel):
             return
 
         await channel.set_permissions(member, read_messages=False)
@@ -33,7 +33,7 @@ class Admin(commands.Cog):
                             member: Member = SlashOption(name="кого", description="Упоминание участника"),
                             use_channel: str = SlashOption(name="где", description="Упоминание канала")):
         channel = self.__get_channel(use_channel)
-        if not await self.__checks(interaction, "23456", member=member, channel=channel):
+        if not await self.__checks(interaction, "2345", member=member, channel=channel):
             return
 
         await channel.set_permissions(member, read_messages=None)
