@@ -324,11 +324,11 @@ class Bot(commands.Bot):
                         await member.remove_roles(utils.get(guild.roles, id=ROLES["Newbie"]))
                         await member.add_roles(utils.get(guild.roles, id=ROLES["Old"]))
             if member_data and member_data["role"] and int(time()) - member_data["role_paid_time"] > 60 * 60 * 24 * 7:
-                if member_data["gold"] < 200:
+                if member_data["gold"] < 100:
                     await guild.get_role(member_data["role"]).delete(reason="Не хватает золота для списания")
                     db.update("users", f"user_id == {member.id}", role=0, role_paid_time=0)
                 else:
-                    db.update("users", f"user_id == {member.id}", gold=member_data["gold"] - 200, role_paid_time=member_data["role_paid_time"] + 60 * 60 * 24 * 7)
+                    db.update("users", f"user_id == {member.id}", gold=member_data["gold"] - 100, role_paid_time=member_data["role_paid_time"] + 60 * 60 * 24 * 7)
 
         new_name = f"ОНЛАЙН: {online_members}/{guild.member_count}"
         if new_name == channel.name:
