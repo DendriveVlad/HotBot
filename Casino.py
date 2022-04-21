@@ -86,7 +86,7 @@ class SlotsChoice(Select):
         else:
             await interaction.followup.send(embed=Embed(title=f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
         self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + profit)
-        await send_log(interaction.guild, log_type="CasinoResult", info="Результат игры: " + profit + "золота", member=interaction.user)
+        await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
         self.view.stop()
 
 
@@ -107,7 +107,7 @@ class Dice(View):
             dices = []
             for i in range(randint(5, 12)):
                 dices = [randint(1, 6), randint(1, 6)]
-                await interaction.edit_original_message(content=emoji_numbers[dices[0]] + " - " + emoji_numbers[dices[1]])
+                await interaction.edit_original_message(content=emoji_numbers[dices[0]] + " " + emoji_numbers[dices[1]])
                 await sleep(0.35)
             difference = abs(sum(dices) - dice_num)
             win = {
@@ -132,7 +132,7 @@ class Dice(View):
                 await interaction.followup.send(embed=Embed(title=f"Разница составила {difference}\n"
                                                                   f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
             self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + profit)
-            await send_log(interaction.guild, log_type="CasinoResult", info="Результат игры: " + profit + "золота", member=interaction.user)
+            await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
             self.stop()
         else:
             await interaction.response.defer()
@@ -224,7 +224,8 @@ class MoneySnail(Select):
             else:
                 await interaction.followup.send(embed=Embed(title=f"Вы проиграли {view.profit} золота", colour=0xBF1818), ephemeral=True)
         self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + view.profit)
-        await send_log(interaction.guild, log_type="CasinoResult", info="Результат игры: " + view.profit + "золота", member=interaction.user)
+        await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {view.profit} золота", member=interaction.user)
+
         self.view.stop()
 
 
