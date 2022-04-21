@@ -149,16 +149,16 @@ class Snail(View):
         self.fall = False
         self.win = False
         self.places = {
-            9: 0.2,
-            8: 0.4,
-            7: 0.8,
-            6: 1.0,
-            5: 1.2,
-            4: 1.4,
-            3: 1.6,
-            2: 1.8,
-            1: 2.0,
-            0: 2.5
+            9: 0.5,
+            8: 1.0,
+            7: 1.1,
+            6: 1.2,
+            5: 1.4,
+            4: 1.6,
+            3: 1.8,
+            2: 2.0,
+            1: 2.5,
+            0: 3.0
         }
 
     @button(label="Сделать шаг", style=ButtonStyle.success, emoji="⬅")
