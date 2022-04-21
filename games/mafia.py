@@ -540,7 +540,7 @@ class Game:
         await sleep(30)
         self.db.delete("games", f"room_id == {self.room.id}")
         await self.room.delete()
-        await send_log(log_type="GameEnd", info=f"Игра закончилась", member=self.bot.get_user(list(self.players_list.keys())[0]), fields=("Победитель(и):", '>\n<@'.join(wins)), color=0xE160F9)
+        await send_log(guild=self.room.guild, log_type="GameEnd", info=f"Игра закончилась", member=self.bot.get_user(list(self.players_list.keys())[0]), fields=("Победитель(и):", '>\n<@'.join(wins)), color=0xE160F9)
 
     async def __removePlayer(self, *players):
         for player in players:

@@ -157,8 +157,7 @@ class Snail(View):
             4: 1.6,
             3: 1.8,
             2: 2.0,
-            1: 2.5,
-            0: 3.0
+            1: 2.5
         }
 
     @button(label="Сделать шаг", style=ButtonStyle.success, emoji="⬅")
