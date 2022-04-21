@@ -209,9 +209,9 @@ class MoneySnail(Select):
         await view.wait()
         if view.fall:
             if view.profit < view.cost // -2:
-                await interaction.followup.send(embed=Embed(title=f"Вы проиграли {abs(view.profit)} золота", colour=0x21F300), ephemeral=True)
+                await interaction.followup.send(embed=Embed(title=f"Вы проиграли {abs(view.profit)} золота", colour=0xBF1818), ephemeral=True)
             else:
-                await interaction.followup.send(embed=Embed(title=f"Вы проиграли {view.cost // 2} золота", colour=0x21F300), ephemeral=True)
+                await interaction.followup.send(embed=Embed(title=f"Вы проиграли {view.cost // 2} золота", colour=0xBF1818), ephemeral=True)
                 view.profit = view.cost // -2
         elif view.win:
             await interaction.followup.send(embed=Embed(title=f"ВЫ СМОГЛИ ПОМОЧЬ УЛИТКИ ПРОЙТИ ХРУПКИЙ ЛЁД!.\n"
