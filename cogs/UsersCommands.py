@@ -35,7 +35,7 @@ class Commands(commands.Cog):
         self.client = client
         self.guild = None
 
-    @slash_command(name="создать-роль", description="Создать собственную роль (Нужно: 5-й уровень и 500 Золота)", guild_ids=[SERVER_ID])
+    @slash_command(name="создать-роль", description="Создать собственную роль (Нужно: 5-й уровень и 300 Золота)", guild_ids=[SERVER_ID])
     async def create_role(self, interaction: Interaction,
                           role_name: str = SlashOption(name="название", description="Название Вашей роли"),
                           role_color: str = SlashOption(name="цвет", description="Цвет Вашей роли")):
@@ -43,8 +43,8 @@ class Commands(commands.Cog):
         if user_db["role"]:
             await interaction.response.send_message(embed=Embed(description="У Вас уже есть собственная роль", color=0xBF1818), ephemeral=True)
             return
-        if await get_level(user_db["points"]) < 5 or user_db["gold"] < 500:
-            await interaction.response.send_message(embed=Embed(description="Для создания роли необходим иметь **5-й** уровень и **500** золота", color=0xBF1818), ephemeral=True)
+        if await get_level(user_db["points"]) < 5 or user_db["gold"] < 300:
+            await interaction.response.send_message(embed=Embed(description="Для создания роли необходим иметь **5-й** уровень и **300** золота", color=0xBF1818), ephemeral=True)
             return
         if role_color.lower() == "hex":
             await interaction.response.send_message("Вместо **HEX** и других цветов Вы можете ввести значение цвета взятого с этого сайта: https://htmlcolorcodes.com/\n"
@@ -59,14 +59,14 @@ class Commands(commands.Cog):
                 await interaction.response.send_message(embed=Embed(description="Не верно задан цвет", color=0xBF1818), ephemeral=True)
                 return
         role = await interaction.guild.create_role(reason="Создал приватную роль", name=role_name, colour=color)
-        await role.edit(position=len(interaction.guild.roles) - 2)
+        await role.edit(position=len(interaction.guild.roles) - 3)
         await interaction.user.add_roles(role)
-        db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] - 500, role=role.id, role_paid_time=int(time()))
+        db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] - 300, role=role.id, role_paid_time=int(time()))
         await interaction.response.send_message(embed=Embed(title="Роль создана", description=f"Вы получили свою новую роль {role.mention}.\n"
-                                                                                              f"Для поддержания роли требуется **200** золота в неделю. Первое списание будет через неделю. Если у Вас будет недостаточно золота, то роль удалится.\n"
-                                                                                              f"Изменение цвета или названия роли стоит **100** золота.", color=0x21F300), ephemeral=True)
+                                                                                              f"Для поддержания роли требуется **100** золота в неделю. Первое списание будет через неделю. Если у Вас будет недостаточно золота, то роль удалится.\n"
+                                                                                              f"Изменение цвета или названия роли стоит **200** золота.", color=0x21F300), ephemeral=True)
 
-    @slash_command(name="изменить-роль", description="Изменить цвет или название роли (Нужно: 100 Золота)", guild_ids=[SERVER_ID])
+    @slash_command(name="изменить-роль", description="Изменить цвет или название роли (Нужно: 200 Золота)", guild_ids=[SERVER_ID])
     async def change_role(self, interaction: Interaction,
                           role_name: str = SlashOption(name="название", description="Название Вашей роли", default="", required=False),
                           role_color: str = SlashOption(name="цвет", description="Цвет Вашей роли", default="", required=False)):
@@ -77,8 +77,8 @@ class Commands(commands.Cog):
         if not user_db["role"]:
             await interaction.response.send_message(embed=Embed(description="У Вас нет собственной роли", color=0xBF1818), ephemeral=True)
             return
-        if user_db["gold"] < 100:
-            await interaction.response.send_message(embed=Embed(description="Для изменения роли необходим иметь **100** золота", color=0xBF1818), ephemeral=True)
+        if user_db["gold"] < 200:
+            await interaction.response.send_message(embed=Embed(description="Для изменения роли необходим иметь **200** золота", color=0xBF1818), ephemeral=True)
             return
         color = 0
         if role_color:
