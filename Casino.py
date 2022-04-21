@@ -5,6 +5,8 @@ from random import choices, randint
 from nextcord import TextChannel, Embed, ButtonStyle, Interaction, SelectOption
 from nextcord.ui import View, button, Select
 
+from info import send_log
+
 game_costs = [10, 20, 50, 100, 500, 1000]
 
 emoji_numbers = {
@@ -84,6 +86,7 @@ class SlotsChoice(Select):
         else:
             await interaction.followup.send(embed=Embed(title=f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
         self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + profit)
+        await send_log(interaction.guild, log_type="CasinoResult", info="Результат игры: " + profit + "золота", member=interaction.user)
         self.view.stop()
 
 
@@ -129,6 +132,7 @@ class Dice(View):
                 await interaction.followup.send(embed=Embed(title=f"Разница составила {difference}\n"
                                                                   f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
             self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + profit)
+            await send_log(interaction.guild, log_type="CasinoResult", info="Результат игры: " + profit + "золота", member=interaction.user)
             self.stop()
         else:
             await interaction.response.defer()
@@ -220,6 +224,7 @@ class MoneySnail(Select):
             else:
                 await interaction.followup.send(embed=Embed(title=f"Вы проиграли {view.profit} золота", colour=0xBF1818), ephemeral=True)
         self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + view.profit)
+        await send_log(interaction.guild, log_type="CasinoResult", info="Результат игры: " + view.profit + "золота", member=interaction.user)
         self.view.stop()
 
 
@@ -236,8 +241,9 @@ class CasinoChoices(View):
         view = View()
         view.add_item(SlotsChoice(self.db, interaction.user.id))
         await interaction.response.send_message("Выберите сколько Вы хотите поставить золота (Чем больше золота, тем выше шанс победить!)", ephemeral=True, view=view)
+        await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Игровой автомат", member=interaction.user)
 
-    @button(label="Кость удачи", style=ButtonStyle.success, emoji="🎲")
+    @button(label="Кости удачи", style=ButtonStyle.success, emoji="🎲")
     async def dice(self, button, interaction: Interaction):
         if self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < 10:
             await interaction.response.send_message(embed=Embed(title="У Вас недостаточно золота для игры в казино", colour=0xBF1818), ephemeral=True)
@@ -245,6 +251,7 @@ class CasinoChoices(View):
         view = Dice(self.db, interaction.user.id)
         await interaction.response.send_message("Выберите сколько Вы хотите поставить золота и на какое число Вы ставите.\n"
                                                 "(Чем ближе Ваше число будет к выпавшему, тем больше Вы получите золота)", ephemeral=True, view=view)
+        await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Кости удачи", member=interaction.user)
 
     @button(label="Неуклюжая улитка", style=ButtonStyle.success, emoji="🐌")
     async def snail(self, button, interaction: Interaction):
@@ -256,6 +263,7 @@ class CasinoChoices(View):
         await interaction.response.send_message("**Суть игры:** Помочь улитке пройти по хрупкому льду. Чем дальше вы пройдёте, тем больше шанс, что лёд треснет и улитка провалится. "
                                                 "Если улитка упадёт, то вы получите только половину от вложенного золота\n"
                                                 "Выберите сколько Вы хотите поставить золота", ephemeral=True, view=view)
+        await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Неуклюжую улитку", member=interaction.user)
 
 
 async def casino(channel: TextChannel, db):

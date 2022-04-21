@@ -13,6 +13,7 @@ from pv_control_panel import voice_control_panel
 from image_processing.UsersInfo import top, level_up
 from games.hub import hub
 from Mine.MineReq import requests
+from Casino import casino
 
 __author__ = "Vladi4ka | DendriveVlad | Deadly"
 
@@ -40,6 +41,7 @@ class Bot(commands.Bot):
             self.check.start()
         await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
         await requests(utils.get(guild.channels, id=CHANNELS["requests"]), self)
+        await casino(utils.get(guild.channels, id=CHANNELS["Casino"]), db)
         self.loop.create_task(top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db))
         print(ct(), "Hello!")
 
