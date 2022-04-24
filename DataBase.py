@@ -18,12 +18,12 @@ class DB:
         self.last_start = int(time())
 
     # date(where): "name == value" or "", column: (name1, name2...) or name
-    def select(self, table, data="", *column):
+    def select(self, table, data="", *columns):
         self.__reload()
         cols = []
-        if column:
-            for i in column:
-                cols.append(eval(f"self.{table}.columns.{i}"))
+        if columns:
+            for column in columns:
+                cols.append(eval(f"self.{table}.columns.{column}"))
 
         else:
             cols.append(eval(f"self.{table}"))
@@ -34,12 +34,12 @@ class DB:
             query = sql.select(cols)
 
         outputs = []
-        if not column:
-            column = [c.key for c in eval(f"self.{table}.columns")]
+        if not columns:
+            columns = [c.key for c in eval(f"self.{table}.columns")]
         for d in self.db.execute(query).fetchall():
             out = {}
-            for i in range(len(d)):
-                out[column[i]] = d[i]
+            for column in range(len(d)):
+                out[columns[column]] = d[column]
             outputs.append(out)
         if len(outputs) == 1:
             return outputs[0]
@@ -74,5 +74,11 @@ class DB:
 
 if __name__ == "__main__":
     db = DB()
-    db.delete("games", "game_cost == 0")
-    print(db.select("games"))
+    # db.update("users", f"user_id == 280536559403532290", challenge_progress=5)
+    print(db.select("users", f"user_id == 280536559403532290"))
+    a = []
+    for i in db.select("users"):
+        if i["user_id"] in a:
+            db.delete("users", f"user_id == {i['user_id']}")
+            print(1)
+        a.append(i["user_id"])
