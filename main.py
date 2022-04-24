@@ -156,7 +156,7 @@ class Bot(commands.Bot):
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
                 await level_up(self, date["points"], date["points"] + 10, message.author.id)
         elif message.channel.id == CHANNELS["Flood"] and date["challenge"] == 4:
-            if not randint(0, 99):
+            if 0 <= randint(0, 99) <= 4:
                 await challengePassed(self, db, message.author)
 
         if message.channel.category_id == CATEGORIES["Voice channels"]:
