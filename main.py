@@ -186,7 +186,7 @@ class Bot(commands.Bot):
                 mod = deleted_message.user
                 break
 
-        await send_log(guild=message.guild, log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
+        await send_log(guild=message.guild, log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content[:1000] + "..."), color=0xBF1818)
 
     @staticmethod
     async def on_message_edit(before: Message, after: Message):
