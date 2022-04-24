@@ -1,6 +1,4 @@
-from time import time
-
-from nextcord import slash_command, Interaction, SlashOption, File, Embed
+from nextcord import slash_command, Interaction, SlashOption, File
 from nextcord.ext import commands
 
 from config import *

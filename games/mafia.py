@@ -8,6 +8,7 @@ from nextcord.ui import View, Button, button
 
 from config import SERVER_ID
 from info import send_log
+from image_processing.UsersInfo import challengePassed
 
 
 async def is_player_in_game(member, db):
@@ -162,7 +163,7 @@ class ShowRoles(View):
         self.game = game_class
 
     @button(style=ButtonStyle.success, label="Узнать свою роль", emoji="✉", row=0)
-    async def get_role(self, button, interaction: Interaction):
+    async def get_role(self, _, interaction: Interaction):
         await interaction.response.send_message(embed=Embed(title=f"Вы {self.game.players_list[interaction.user.id]}",
                                                             description=f"{'Для общения с остальными членами Мафии используйте канал ' + self.game.mafia_room.mention if self.game.players_list[interaction.user.id] == 'Мафия' and self.game.mafia_room else ''}",
                                                             color=0xD8301F if self.game.players_list[interaction.user.id] in ("Мафия", "Маньяк") else 0x1EC623), ephemeral=True)
@@ -175,7 +176,7 @@ class GamePassTurn(View):
         self.turn = 0
 
     @button(style=ButtonStyle.success, label="Передать ход", emoji="➡")
-    async def get_role(self, button, interaction: Interaction):
+    async def get_role(self, _, interaction: Interaction):
         if interaction.user.id == self.member:
             self.turn = 1
             self.stop()
@@ -523,13 +524,16 @@ class Game:
         award = ""
         for p in list(self.players_list.keys()):
             points = 50
-            player = self.db.select("users", f"user_id == {p}", "points", "gold")
+            player = self.db.select("users", f"user_id == {p}", "points", "gold", "challenge")
             if p in wins:
                 points = 120
                 award += f"<@{p}> получает **{points}** опыта и **{gold}** золота\n"
                 self.db.update("users", f"user_id == {p}", points=player["points"] + points, gold=player["gold"] + gold)
                 continue
             self.db.update("users", f"user_id == {p}", points=player["points"] + points)
+            if player["challenge"] == 6:
+                await challengePassed(self.bot, self.db, self.get_member(p))
+
         award += "\nВсе остальные получили утешительный приз в размере 50 опыта"
 
         await self.room.send(f"Игра окончена.", embeds=[Embed(title="Побеждает", description=self.win, color=0x1EC623 if self.win == "Мирные жители" else 0xD8301F),

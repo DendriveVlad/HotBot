@@ -9,6 +9,7 @@ from nextcord.ui import View, Button
 
 from config import BOT_ID
 from info import send_log
+from image_processing.UsersInfo import challengePassed
 
 
 async def is_player_in_game(member, db):
@@ -308,6 +309,8 @@ class Game:
             if p in (third, second, first):
                 continue
             self.db.update("users", f"user_id == {p}", points=self.db.select("users", f"user_id == {p}", "points")["points"] + 25)
+            if self.db.select("users", f"user_id == {p}", "challenge")["challenge"] == 6:
+                await challengePassed(self.bot, self.db, self.room.guild.get_member(p))
         await self.room.send("", embed=Embed(title="Игра окончена", description=f"1 место: <@{first}>\n"
                                                                                 f"+{first_place[0]} опыта, +{int(first_place[-1])} {'золото' if str(first_place[-1])[-1] == '1' else 'золота'}\n\n" +
                                                                                 (f"2 место: <@{second}>\n"

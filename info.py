@@ -11,6 +11,7 @@ async def send_log(guild, log_type: str, info: str = "", member: Member = None, 
     print(f"[{ct()}] {' '.join((str(member.id), log_type, info))}")
     embed = Embed(title=log_type, description=f"{info}", colour=color, timestamp=datetime.fromtimestamp(time()))
     if member:
+        embed.set_footer(text="memberID: " + member.id)
         embed.set_author(
             name=member,
             icon_url=member.avatar.url if member.avatar else Embed.Empty

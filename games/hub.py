@@ -27,19 +27,19 @@ class ChoiceGame(View):
         self.bot = bot
 
     @button(style=ButtonStyle.success, label="Горячая картошка (Быстрая)", emoji="🥔", row=0, custom_id="potato_short")
-    async def potato_short(self, button, interaction: Interaction):
+    async def potato_short(self, _, interaction: Interaction):
         await self.create_room("potato", interaction)
 
     @button(style=ButtonStyle.success, label="Горячая картошка (Длинная)", emoji="🥔", row=0, custom_id="potato_long")
-    async def potato_long(self, button, interaction: Interaction):
+    async def potato_long(self, _, interaction: Interaction):
         await self.create_room("potato", interaction)
 
     @button(style=ButtonStyle.success, label="Мафия Lite", emoji="🤵", row=1, custom_id="mafia")
-    async def mafia(self, button, interaction: Interaction):
+    async def mafia(self, _, interaction: Interaction):
         await self.create_room("mafia", interaction)
 
     @button(style=ButtonStyle.secondary, label="Новые игры появятся позже...", emoji="🔃", row=2)
-    async def nothing(self, button, interaction: Interaction):
+    async def nothing(self, _, interaction: Interaction):
         await interaction.response.pong()
 
     async def create_room(self, game, interaction: Interaction):

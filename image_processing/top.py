@@ -1,8 +1,7 @@
 from io import BytesIO
 
-from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont
 from requests import get
-from requests.exceptions import ConnectionError
 
 from config import LEVEL_POINTS
 

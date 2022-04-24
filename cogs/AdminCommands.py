@@ -1,7 +1,4 @@
-from datetime import datetime
-from time import time, ctime as ct
-
-from nextcord import slash_command, Embed, Interaction, Member, SlashOption, TextChannel, utils
+from nextcord import slash_command, Embed, Interaction, Member, SlashOption, TextChannel
 from nextcord.ext import commands
 
 from config import *

@@ -1,7 +1,7 @@
 import os
 from asyncio import sleep
 from time import time, ctime as ct
-from random import choice
+from random import choice, randint
 
 from nextcord import Intents, utils, Member, VoiceState, errors, AuditLogAction, Guild, User, Message, DMChannel, MessageType, Embed, PermissionOverwrite
 from nextcord.ext import tasks, commands
@@ -10,12 +10,12 @@ from DataBase import DB
 from config import *
 from info import send_log
 from pv_control_panel import voice_control_panel
-from image_processing.UsersInfo import top, level_up
+from image_processing.UsersInfo import top, level_up, challengePassed
 from games.hub import hub
 from Mine.MineReq import requests
 from Casino import casino
 
-__author__ = "Vladi4ka | DendriveVlad | Deadly"
+__author__ = "Vladi4ka | DendriveVlad"
 
 db = DB()
 
@@ -45,7 +45,8 @@ class Bot(commands.Bot):
         self.loop.create_task(top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db))
         print(ct(), "Hello!")
 
-    async def on_member_join(self, member: Member):
+    @staticmethod
+    async def on_member_join(member: Member):
         t = int(time())
         while member.pending:
             await sleep(2)
@@ -60,7 +61,8 @@ class Bot(commands.Bot):
         await member.add_roles(utils.get(member.guild.roles, id=ROLES["Newbie"]))
         await send_log(guild=member.guild, log_type="MemberJoin", info="Подключился к серверу", member=member, color=0x21F300)
 
-    async def on_member_remove(self, member: Member):
+    @staticmethod
+    async def on_member_remove(member: Member):
         if member.pending:
             return
         mod = None
@@ -70,7 +72,8 @@ class Bot(commands.Bot):
                 break
         await send_log(guild=member.guild, log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, color=0xBF1818)
 
-    async def on_member_ban(self, guild: Guild, user: User | Member):
+    @staticmethod
+    async def on_member_ban(guild: Guild, user: User | Member):
         mod = None
         async for kick in guild.audit_logs(limit=3, action=AuditLogAction.ban):
             if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == user.id:
@@ -83,19 +86,17 @@ class Bot(commands.Bot):
         if message.author.id == BOT_ID:
             return
         if type(message.channel) is DMChannel:
-            await send_log(guild=message.guild, log_type="Гений", member=message.author, fields=("Пишет мне в ЛС следующее сообщение:", message.content), color=0x766EFF)
+            await send_log(guild=message.channel.guild, log_type="Гений", member=message.author, fields=("Пишет мне в ЛС следующее сообщение:", message.content), color=0x766EFF)
             async for h in message.channel.history(limit=10):
                 if h.author.id == BOT_ID:
                     return
             await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
+            if db.select("users", f"users_id == {message.author.id}", "challenge")["challenge"] == 5:
+                await challengePassed(self, db, message.author)
             return
 
         if message.channel.id == CHANNELS["hello"] or message.channel.category_id == CATEGORIES["Minecraft"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
             return
-
-        # if message.content == "delete" and message.author.id == 280536559403532290:
-        #     await message.channel.delete()
-        #     db.delete("games", f"game_name == 'potato'")
 
         print(message.author, ">", message.content)
 
@@ -104,7 +105,7 @@ class Bot(commands.Bot):
                 link = ".".join(message.content[message.content.index("https://"):].split("/")[2].split(".")[-2:])
                 if link not in ALLOWED_LINKS:
                     await message.delete()
-                    await send_log(guild=message.guild, log_type="StopSpam", member=message.author, fields=("Удалено спам-сообщениее:", message.content), color=0xF9BA1C)
+                    await send_log(guild=message.guild, log_type="StopSpam", member=message.author, fields=("Удалено спам-сообщение:", message.content), color=0xF9BA1C)
                     if self.spam_count.count(message.author.id) >= 2:
                         await message.author.ban(reason="Spam")
                         return
@@ -113,8 +114,8 @@ class Bot(commands.Bot):
                     self.spam_count.remove(message.author.id)
                     return
 
+        date = db.select("users", f"user_id == {message.author.id}", "points", "last_message", "challenge", "challenge_progress")
         if message.channel.id in LEVEL_ALLOWED_TEXT_CHANNELS:
-            date = db.select("users", f"user_id == {message.author.id}", "points", "last_message")
             if message.type != MessageType.reply and int(time()) - date["last_message"] > 60 * 60 * 5:
                 import difflib
                 right_words = ("привет", "прив", "ку", "хай", "здорова", "хеллоу", "здравствуйте", "алоха", "бонжур", "hello", "hi", "bonjour")
@@ -131,11 +132,36 @@ class Bot(commands.Bot):
                     for w in right_words:
                         if w in words:
                             await message.reply(choice(("Здорова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
+                            if db.select("users", f"users_id == {message.author.id}", "challenge")["challenge"] == 5:
+                                await challengePassed(self, db, message.author)
                             break
+
+            match date["challenge"]:
+                case 1:
+                    if message.channel.id == CHANNELS["Memes"]:
+                        db.update("users", f"user_id == {message.author.id}", challenge_progress=int(date["challenge_progress"]) + 1)
+                        if int(date["challenge_progress"]) >= 4:
+                            await challengePassed(self, db, message.author)
+                case 2:
+                    db.update("users", f"user_id == {message.author.id}", challenge_progress=int(date["challenge_progress"]) + 1)
+                    if int(date["challenge_progress"]) >= 49:
+                        await challengePassed(self, db, message.author)
+                case 3:
+                    if message.type == MessageType.reply:
+                        db.update("users", f"user_id == {message.author.id}", challenge_progress=int(date["challenge_progress"]) + 1)
+                        if int(date["challenge_progress"]) >= 9:
+                            await challengePassed(self, db, message.author)
 
             if int(time()) > date["last_message"] + 20:
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
                 await level_up(self, date["points"], date["points"] + 10, message.author.id)
+        elif message.channel.id == CHANNELS["Flood"]:
+            if date["challenge_progress"][:11] != message.content[:11]:
+                db.update("users", f"user_id == {message.author.id}", challenge_progress=message.content[:11] + "01")
+            else:
+                db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"][:11] + str(int(date["challenge_progress"][11:]) + 1))
+                if int(date["challenge_progress"]) >= randint(11, 30):
+                    await challengePassed(self, db, message.author)
 
         if message.channel.category_id == CATEGORIES["Voice channels"]:
             await message.delete()
@@ -162,7 +188,8 @@ class Bot(commands.Bot):
 
         await send_log(guild=message.guild, log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content), color=0xBF1818)
 
-    async def on_message_edit(self, before: Message, after: Message):
+    @staticmethod
+    async def on_message_edit(before: Message, after: Message):
         if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID or (not before.attachments and after.attachments):
             return
 
@@ -210,12 +237,16 @@ class Bot(commands.Bot):
             date = db.select("users", f"user_id == {member.id}", "points", "talk_time")
             new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
             db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
+            if date["challenge"] and (int(time()) - date["talk_time"]) // 1800:
+                await challengePassed(self, db, member)
             await level_up(self, date["points"], new_points, member.id)
         elif after.channel != before.channel:
             if after.channel == CHANNELS["AFK"]:
                 date = db.select("users", f"user_id == {member.id}", "points", "talk_time")
                 new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
                 db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
+                if date["challenge"] and (int(time()) - date["talk_time"]) // 1800:
+                    await challengePassed(self, db, member)
                 await level_up(self, date["points"], new_points, member.id)
             await send_log(guild=member.guild, log_type="VoiceConnect", info=f"Зашёл в канал {after.channel}", member=member)
             if not before.channel:
@@ -276,7 +307,8 @@ class Bot(commands.Bot):
                     if await voice_control_panel(text, voice, member, self, db):
                         break
 
-    async def on_member_update(self, before: Member, after: Member):
+    @staticmethod
+    async def on_member_update(before: Member, after: Member):
         mod = None
         async for member_update in before.guild.audit_logs(limit=3, action=AuditLogAction.member_update):
             if int(time()) - int(member_update.created_at.timestamp()) <= 50 and member_update.target.id == before.id:

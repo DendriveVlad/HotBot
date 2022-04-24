@@ -11,7 +11,7 @@ from config import ROLES
 async def voice_control_panel(text, voice, member, bot, db):
     async def get_message(mess):
         send = await text.send(mess, delete_after=60.0)
-        message = await bot.wait_for("message", timeout=60, check=lambda m: m.author == member and m.channel == text)
+        message = await bot.wait_for("message", timeout=60, check=lambda x: x.author == member and x.channel == text)
         await send.delete()
         return message.content
 

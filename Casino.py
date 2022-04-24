@@ -1,11 +1,13 @@
 from decimal import Decimal
 from asyncio import sleep
 from random import choices, randint
+from time import time
 
 from nextcord import TextChannel, Embed, ButtonStyle, Interaction, SelectOption
 from nextcord.ui import View, button, Select
 
 from info import send_log
+from image_processing.UsersInfo import challengePassed
 
 game_costs = [10, 20, 50, 100, 500, 1000]
 
@@ -85,8 +87,13 @@ class SlotsChoice(Select):
             await interaction.followup.send(embed=Embed(title=f"Вы выиграли {profit} золота", colour=0x21F300), ephemeral=True)
         else:
             await interaction.followup.send(embed=Embed(title=f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
-        self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + profit)
+        user_db = self.db.select("users", f"user_id == {interaction.user.id}", "gold", "points", "challenge", "challenge_progress")
+        self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + profit, points=user_db["points"] + 20, last_info=int(time()))
         await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
+        if user_db["challenge"] == 7:
+            self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=int(user_db["challenge_progress"]) + 1)
+            if int(user_db["challenge_progress"]) >= 9:
+                await challengePassed(self, self.db, interaction.user.id)
         self.view.stop()
 
 
@@ -95,7 +102,7 @@ class Dice(View):
         super(Dice, self).__init__()
         self.db = db
         self.add_item(Select(placeholder="Нажмите и выберите число (золото)", options=[SelectOption(label=str(cost)) for cost in (filter(lambda x: x <= db.select("users", f"user_id == {user_id}", "gold")["gold"], game_costs))]))
-        self.add_item(Select(placeholder="Нажмите и выберите число (сумма чисел на костях)", options=[SelectOption(label=str(n)) for n in range(1, 13)]))
+        self.add_item(Select(placeholder="Нажмите и выберите число (сумма чисел на костях)", options=[SelectOption(label=str(n)) for n in range(2, 13)]))
 
     async def interaction_check(self, interaction: Interaction):
         children: list[Select] = self.children
@@ -131,8 +138,13 @@ class Dice(View):
             else:
                 await interaction.followup.send(embed=Embed(title=f"Разница составила {difference}\n"
                                                                   f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
-            self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + profit)
+            user_db = self.db.select("users", f"user_id == {interaction.user.id}", "gold", "points", "challenge", "challenge_progress")
+            self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + profit, points=user_db["points"] + 20, last_info=int(time()))
             await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
+            if user_db["challenge"] == 7:
+                self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=int(user_db["challenge_progress"]) + 1)
+                if int(user_db["challenge_progress"]) >= 9:
+                    await challengePassed(self, self.db, interaction.user.id)
             self.stop()
         else:
             await interaction.response.defer()
@@ -157,11 +169,12 @@ class Snail(View):
             4: 1.6,
             3: 1.8,
             2: 2.0,
-            1: 2.5
+            1: 2.5,
+            0: 3.0
         }
 
     @button(label="Сделать шаг", style=ButtonStyle.success, emoji="⬅")
-    async def step(self, button, interaction: Interaction):
+    async def step(self, _, interaction: Interaction):
         await interaction.response.pong()
         self.place -= 1
         if randint(1, 100) <= self.chance:
@@ -186,8 +199,10 @@ class Snail(View):
             self.stop()
 
     @button(label="Остановиться", style=ButtonStyle.secondary, emoji="🛑")
-    async def stop_game(self, button, interaction: Interaction):
+    async def stop_game(self, _, interaction: Interaction):
         await interaction.response.pong()
+        await self.original_interaction.edit_original_message(content="✴️" * self.place + "🐌" + "✴️" * (10 - self.place) + "\n""🟫🟦🟦🟦🟦🟦🟦🟦🟦🟦🟫",
+                                                              embed=Embed(description=f"Вы остановились", colour=0xEAD445))
         self.stop()
 
 
@@ -222,9 +237,13 @@ class MoneySnail(Select):
                 await interaction.followup.send(embed=Embed(title=f"Вы выиграли {view.profit} золота", colour=0x21F300), ephemeral=True)
             else:
                 await interaction.followup.send(embed=Embed(title=f"Вы проиграли {view.profit} золота", colour=0xBF1818), ephemeral=True)
-        self.db.update("users", f"user_id == {interaction.user.id}", gold=self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] + view.profit)
+        user_db = self.db.select("users", f"user_id == {interaction.user.id}", "gold", "points", "challenge", "challenge_progress")
+        self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + view.profit, points=user_db["points"] + 20, last_info=int(time()))
         await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {view.profit} золота", member=interaction.user)
-
+        if user_db["challenge"] == 7:
+            self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=int(user_db["challenge_progress"]) + 1)
+            if int(user_db["challenge_progress"]) >= 9:
+                await challengePassed(self, self.db, interaction.user.id)
         self.view.stop()
 
 
@@ -234,7 +253,10 @@ class CasinoChoices(View):
         self.db = db
 
     @button(label="Игровой автомат", style=ButtonStyle.success, emoji="🎰")
-    async def slots(self, button, interaction: Interaction):
+    async def slots(self, _, interaction: Interaction):
+        if int(time()) - self.db.select("users", f"user_id == {interaction.user.id}", "last_info")["last_info"] <= 15:
+            await interaction.response.pong()
+            return
         if self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < 10:
             await interaction.response.send_message(embed=Embed(title="У Вас недостаточно золота для игры в казино", colour=0xBF1818), ephemeral=True)
             return
@@ -244,7 +266,10 @@ class CasinoChoices(View):
         await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Игровой автомат", member=interaction.user)
 
     @button(label="Кости удачи", style=ButtonStyle.success, emoji="🎲")
-    async def dice(self, button, interaction: Interaction):
+    async def dice(self, _, interaction: Interaction):
+        if int(time()) - self.db.select("users", f"user_id == {interaction.user.id}", "last_info")["last_info"] <= 15:
+            await interaction.response.pong()
+            return
         if self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < 10:
             await interaction.response.send_message(embed=Embed(title="У Вас недостаточно золота для игры в казино", colour=0xBF1818), ephemeral=True)
             return
@@ -254,7 +279,10 @@ class CasinoChoices(View):
         await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Кости удачи", member=interaction.user)
 
     @button(label="Неуклюжая улитка", style=ButtonStyle.success, emoji="🐌")
-    async def snail(self, button, interaction: Interaction):
+    async def snail(self, _, interaction: Interaction):
+        if int(time()) - self.db.select("users", f"user_id == {interaction.user.id}", "last_info")["last_info"] <= 15:
+            await interaction.response.pong()
+            return
         if self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < 10:
             await interaction.response.send_message(embed=Embed(title="У Вас недостаточно золота для игры в казино", colour=0xBF1818), ephemeral=True)
             return

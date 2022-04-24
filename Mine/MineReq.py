@@ -35,10 +35,10 @@ class CreateRequest(View):
         self.bot = bot
 
     @button(style=ButtonStyle.success, label="Создать заявку", emoji="📝", custom_id="create")
-    async def create(self, button, interaction: Interaction):
-        btns = (("Строительство", "🚧"), ("Квесты", "✒"), ("Дизайн", "✏"), ("Программирование", "✏"), ("Другое", "🧙"))
+    async def create(self, _, interaction: Interaction):
+        buttons = (("Строительство", "🚧"), ("Квесты", "✒"), ("Дизайн", "✏"), ("Программирование", "✏"), ("Другое", "🧙"))
         view = View()
-        for b in btns:
+        for b in buttons:
             view.add_item(CButton(*b, self.bot))
         await interaction.response.send_message("Чем бы Вы хотели заняться на нашем проекте?", view=view, ephemeral=True)
 
@@ -49,11 +49,13 @@ class Confirm(View):
         self.accept = True
 
     @button(style=ButtonStyle.success, label="Подтвердить", emoji="✅")
-    async def confirm(self, button, interaction: Interaction):
+    async def confirm(self, _, interaction: Interaction):
+        await interaction.response.pong()
         self.stop()
 
     @button(style=ButtonStyle.secondary, label="Отмена")
-    async def cancel(self, button, interaction: Interaction):
+    async def cancel(self, _, interaction: Interaction):
+        await interaction.response.pong()
         self.accept = False
         self.stop()
 
@@ -82,7 +84,7 @@ async def threadEngine(thread: Thread, member: Member, bot):
                 q = "Что Вы умеете?"
                 q2 = "Чем бы Вы хотели заниматься на проекте?"
         request = {}
-        for mess in (("name", "Cкажите, как Вас зовут?"),
+        for mess in (("name", "Скажите, как Вас зовут?"),
                      ("age", "Сколько Вам лет?"),
                      ("about", "Расскажите немного о себе (У Вас 10 минут, иначе ветка удалится)"),
                      ("exp", "Был ли у Вас хоть какой-то опыт работы на серверах? Если да, то распишите какой."),
@@ -95,7 +97,7 @@ async def threadEngine(thread: Thread, member: Member, bot):
             request[mess[0]] = None
             if mess[-1]:
                 m = await thread.send(mess[-1])
-                text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
+                text = await bot.wait_for("message", timeout=300, check=lambda x: x.author.id == member.id and x.channel.id == thread.id)
 
                 acceptation = await confirm(thread, member, bot, text)
                 if acceptation:
@@ -138,7 +140,7 @@ async def confirm(thread, member, bot, text, last=False):
         if not view.accept:
             if text:
                 await text.delete()
-            text = await bot.wait_for("message", timeout=300, check=lambda m: m.author.id == member.id and m.channel.id == thread.id)
+            text = await bot.wait_for("message", timeout=300, check=lambda x: x.author.id == member.id and x.channel.id == thread.id)
         else:
             return text
 
