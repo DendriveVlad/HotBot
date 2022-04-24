@@ -86,13 +86,13 @@ class Bot(commands.Bot):
         if message.author.id == BOT_ID:
             return
         if type(message.channel) is DMChannel:
-            await send_log(guild=message.channel.guild, log_type="Гений", member=message.author, fields=("Пишет мне в ЛС следующее сообщение:", message.content), color=0x766EFF)
+            await send_log(guild=self.get_guild(SERVER_ID), log_type="Гений", member=message.author, fields=("Пишет мне в ЛС следующее сообщение:", message.content), color=0x766EFF)
             async for h in message.channel.history(limit=10):
                 if h.author.id == BOT_ID:
                     return
             await message.reply("Ты чё, дебил что ли? Нахер ты мне пишешь? Я РОБОТ! Я ФИЗИЧЕСКИ НЕ МОГУ ПРОЧИТАТЬ И ОТВЕТИТЬ НА ТВОЁ СООБЩЕНИЕ!")
-            if db.select("users", f"users_id == {message.author.id}", "challenge")["challenge"] == 5:
-                await challengePassed(self, db, message.author)
+            if db.select("users", f"user_id == {message.author.id}", "challenge")["challenge"] == 5:
+                await challengePassed(self, db, self.get_guild(SERVER_ID).get_member(message.author.id))
             return
 
         if message.channel.id == CHANNELS["hello"] or message.channel.category_id == CATEGORIES["Minecraft"] or message.channel.id == CHANNELS["discord_updates"] or (message.channel.category_id == CATEGORIES["Bot"] and "https://" not in message.content):
@@ -132,36 +132,32 @@ class Bot(commands.Bot):
                     for w in right_words:
                         if w in words:
                             await message.reply(choice(("Здорова", "Алохо!", "Привет-амлет!", "Приветствую", "Ну типо привет", "Hi", "Bonjour", "おい")))
-                            if db.select("users", f"users_id == {message.author.id}", "challenge")["challenge"] == 5:
+                            if db.select("users", f"user_id == {message.author.id}", "challenge")["challenge"] == 5:
                                 await challengePassed(self, db, message.author)
                             break
 
             match date["challenge"]:
                 case 1:
                     if message.channel.id == CHANNELS["Memes"]:
-                        db.update("users", f"user_id == {message.author.id}", challenge_progress=int(date["challenge_progress"]) + 1)
-                        if int(date["challenge_progress"]) >= 4:
+                        db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
+                        if date["challenge_progress"] >= 4:
                             await challengePassed(self, db, message.author)
                 case 2:
-                    db.update("users", f"user_id == {message.author.id}", challenge_progress=int(date["challenge_progress"]) + 1)
-                    if int(date["challenge_progress"]) >= 49:
+                    db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
+                    if date["challenge_progress"] >= 49:
                         await challengePassed(self, db, message.author)
                 case 3:
                     if message.type == MessageType.reply:
-                        db.update("users", f"user_id == {message.author.id}", challenge_progress=int(date["challenge_progress"]) + 1)
-                        if int(date["challenge_progress"]) >= 9:
+                        db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
+                        if date["challenge_progress"] >= 9:
                             await challengePassed(self, db, message.author)
 
             if int(time()) > date["last_message"] + 20:
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
                 await level_up(self, date["points"], date["points"] + 10, message.author.id)
-        elif message.channel.id == CHANNELS["Flood"]:
-            if date["challenge_progress"][:11] != message.content[:11]:
-                db.update("users", f"user_id == {message.author.id}", challenge_progress=message.content[:11] + "01")
-            else:
-                db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"][:11] + str(int(date["challenge_progress"][11:]) + 1))
-                if int(date["challenge_progress"]) >= randint(11, 30):
-                    await challengePassed(self, db, message.author)
+        elif message.channel.id == CHANNELS["Flood"] and date["challenge"] == 4:
+            if not randint(0, 99):
+                await challengePassed(self, db, message.author)
 
         if message.channel.category_id == CATEGORIES["Voice channels"]:
             await message.delete()
@@ -234,7 +230,7 @@ class Bot(commands.Bot):
     async def on_voice_state_update(self, member: Message, before: VoiceState, after: VoiceState):
         if not after.channel and before.channel:
             await send_log(guild=member.guild, log_type="VoiceDisconnect", info="Вышел из голосового канала", member=member)
-            date = db.select("users", f"user_id == {member.id}", "points", "talk_time")
+            date = db.select("users", f"user_id == {member.id}", "points", "talk_time", "challenge")
             new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
             db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
             if date["challenge"] and (int(time()) - date["talk_time"]) // 1800:
@@ -242,7 +238,7 @@ class Bot(commands.Bot):
             await level_up(self, date["points"], new_points, member.id)
         elif after.channel != before.channel:
             if after.channel == CHANNELS["AFK"]:
-                date = db.select("users", f"user_id == {member.id}", "points", "talk_time")
+                date = db.select("users", f"user_id == {member.id}", "points", "talk_time", "challenge")
                 new_points = date["points"] + ((int(time()) - date["talk_time"]) // 300) * 7
                 db.update("users", f"user_id == {member.id}", points=new_points, talk_time=0)
                 if date["challenge"] and (int(time()) - date["talk_time"]) // 1800:

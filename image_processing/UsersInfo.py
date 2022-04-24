@@ -54,7 +54,7 @@ class UserRewardChallenge(View):
                 date["rewards_count"] = 1
             if date["rewards_count"] > 7:
                 date["rewards_count"] = 7
-            level = get_level(date["points"])
+            level = await get_level(date["points"])
             plus_gold = 5 + 3 * date["rewards_count"] + (4 if date["rewards_count"] == 7 else 0)
             bonus_gold_level = plus_gold * (0.02 * level)
 
@@ -96,12 +96,13 @@ class UserRewardChallenge(View):
         dt = self.db.select("info", "", "datetime")["datetime"]
         if int(time()) - dt >= 60 * 60 * 24 * 2:
             self.db.update("info", f"datetime=={dt}", datetime=dt + (60 * 60 * 24))
-            await interaction.response.send_message(embed=Embed(description=f"Данные обновлены, нажмите на получение ежедневной награды ещё раз", color=0x21F300), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(description=f"Данные обновлены, нажмите на получение ежедневного задания ещё раз", color=0x21F300), ephemeral=True)
             return
         date = self.db.select("users", f"user_id == {interaction.user.id}", "last_challenge")
         if int(time()) - date["last_challenge"] <= 60 * 60 * 24:
-            await interaction.response.send_message(embed=Embed(description=f"<@{interaction.user.id}>, Вы сегодня уже получили ежедневную награду", color=0xBF1818), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(description=f"<@{interaction.user.id}>, Вы сегодня уже получили ежедневное задание", color=0xBF1818), ephemeral=True)
             self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
+            return
         challenge = randint(1, 8)
         challenges = {
             1: "Отправить 5 мемов",
@@ -117,8 +118,6 @@ class UserRewardChallenge(View):
             embed=Embed(title="Ваше задание на сегодня: ", description=challenges[challenge] + (" (учитываются только каналы, где накапливается опыт)" if challenge in (2, 3) else ""), color=0x58A3FC), ephemeral=True
         )
         self.db.update("users", f"user_id == {interaction.user.id}", challenge=challenge, last_challenge=dt + (60 * 60 * 24))
-        if challenge == 4:
-            self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress="000000000000")
         await send_log(guild=interaction.guild, log_type="MemberGetChallenge", info=f"Получил задание {challenges[challenge]}", member=interaction.user)
 
 
@@ -162,7 +161,7 @@ async def level_up(bot, old_points, new_points, member_id):
 async def challengePassed(bot, db, member):
     date = db.select("users", f"user_id == {member.id}", "points", "gold", "challenge")
     plus_gold = 20
-    level = get_level(date["points"])
+    level = await get_level(date["points"])
     bonus_gold_level = plus_gold * (0.02 * level)
 
     percent = 0

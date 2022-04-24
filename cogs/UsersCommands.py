@@ -36,19 +36,19 @@ class Commands(commands.Cog):
         self.guild = None
 
     @slash_command(name="help", description="Получить список всех команд", guild_ids=[SERVER_ID])
-    @slash_command(name="помощь", description="Получить список всех команд", guild_ids=[SERVER_ID])
     async def help(self, interaction: Interaction):
         message = "**/создать-роль, /изменить-роль, /удалить-роль** - команды для управление персональной ролью\n" \
                   "**/передать-золото** - команда для передачи золота любому участнику\n" \
                   "**/бросить-кубик** - команда, которая даёт случайное число от 1 до 6 (работает только в <#714058786679291924>)\n" \
                   "**/ударить, /обнять, /погладить, /укусить, /признаться-в-любви** - роле-плейные команды, которые уведомляют участников, которым они адресованы (работает только в <#714058786679291924>)"
-        if filter(lambda role: role.id in (ROLES["Admin"], ROLES["Moder"], ROLES["Owner"], ROLES["Vlad"]), interaction.user.roles):
+        if list(filter(lambda role: role.id in (ROLES["Admin"], ROLES["Moder"], ROLES["Owner"], ROLES["Vlad"]), interaction.user.roles)):
             message += "\n\nКоманды для модераторов:\n" \
                        "**/заблокировать-в-канале, /разблокировать-в-канале** - команды для блокировки или разблокировки участников в определённых каналах\n" \
                        "**/о-участнике** - команда выдаёт полную информацию о участнике, которая хранится в базе данных"
-        if filter(lambda role: role.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]), interaction.user.roles):
+        if list(filter(lambda role: role.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]), interaction.user.roles)):
             message += "\n\nКоманды для администраторов:\n" \
                        "**/изменить, /удалить, /добавить** - команды изменения золота или опыта участникам"
+        await interaction.response.send_message(embed=Embed(title="Команды сервера:", description=message, color=0xEAD029), ephemeral=True)
 
     @slash_command(name="создать-роль", description="Создать собственную роль (Нужно: 5-й уровень и 300 Золота)", guild_ids=[SERVER_ID])
     async def create_role(self, interaction: Interaction,
@@ -145,12 +145,12 @@ class Commands(commands.Cog):
         if db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < count:
             await interaction.response.send_message(embed=Embed(description="У Вас нет столько золота", color=0xBF1818), ephemeral=True)
             return
-        elif count < 0:
-            await interaction.response.send_message(embed=Embed(description="Вы не можете передать отрицательное количество золота", color=0xBF1818), ephemeral=True)
+        elif count < 10:
+            await interaction.response.send_message(embed=Embed(description="Вы не можете передать меньше 10 золота", color=0xBF1818), ephemeral=True)
             return
-        db.update("users", f"user_id == {member.id}", gold=db.select("users", f"user_id == {member.id}", "gold")["gold"] + count * 0.93)
+        db.update("users", f"user_id == {member.id}", gold=db.select("users", f"user_id == {member.id}", "gold")["gold"] + int(count * 0.93))
         db.update("users", f"user_id == {interaction.user.id}", gold=db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] - count)
-        await interaction.response.send_message(embed=Embed(title="Золото передано", description=f"{member.mention} получил {count * 0.93} золота", color=0x21F300), ephemeral=True)
+        await interaction.response.send_message(embed=Embed(title="Золото передано", description=f"{member.mention} получил {int(count * 0.93)} золота", color=0x21F300), ephemeral=True)
 
     @slash_command(name="бросить-кубик", description="Бросить кубик и получить случайное число от 1 до 6 (стоимость: 2 золота)", guild_ids=[SERVER_ID])
     async def roll(self, interaction: Interaction):

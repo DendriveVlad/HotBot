@@ -20,10 +20,12 @@ def get_top(guild, db):
 
     user_level = []
     container = {}
-    for date in db.select("users", "points > 1000", "user_id", "points"):
-        if filter(lambda role: role.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]), guild.get_member(date["user_id"]).roles):
-            continue
-        container[date["user_id"]] = date["points"]
+    for date in db.select("users", "points != 0", "user_id", "points"):
+        member = guild.get_member(date["user_id"])
+        if member:
+            if list(filter(lambda role: role.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]), member.roles)):
+                continue
+            container[date["user_id"]] = date["points"]
     for id, points in sorted(container.items(), key=lambda item: item[1], reverse=True):
         user_level.append((id, points))
 
@@ -54,9 +56,11 @@ def get_top(guild, db):
     user_gold = []
     container = {}
     for date in db.select("users", f"gold != 0", "user_id", "gold"):
-        if filter(lambda role: role.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]), guild.get_member(date["user_id"]).roles):
-            continue
-        container[date["user_id"]] = date["gold"]
+        member = guild.get_member(date["user_id"])
+        if member:
+            if list(filter(lambda role: role.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]), member.roles)):
+                continue
+            container[date["user_id"]] = date["gold"]
     for id, gold in sorted(container.items(), key=lambda item: item[1], reverse=True):
         user_gold.append((id, gold))
 

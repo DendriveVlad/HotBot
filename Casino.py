@@ -91,8 +91,8 @@ class SlotsChoice(Select):
         self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + profit, points=user_db["points"] + 20, last_info=int(time()))
         await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
         if user_db["challenge"] == 7:
-            self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=int(user_db["challenge_progress"]) + 1)
-            if int(user_db["challenge_progress"]) >= 9:
+            self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
+            if user_db["challenge_progress"] >= 9:
                 await challengePassed(self, self.db, interaction.user.id)
         self.view.stop()
 
@@ -142,8 +142,8 @@ class Dice(View):
             self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + profit, points=user_db["points"] + 20, last_info=int(time()))
             await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
             if user_db["challenge"] == 7:
-                self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=int(user_db["challenge_progress"]) + 1)
-                if int(user_db["challenge_progress"]) >= 9:
+                self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
+                if user_db["challenge_progress"] >= 9:
                     await challengePassed(self, self.db, interaction.user.id)
             self.stop()
         else:
@@ -241,8 +241,8 @@ class MoneySnail(Select):
         self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + view.profit, points=user_db["points"] + 20, last_info=int(time()))
         await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {view.profit} золота", member=interaction.user)
         if user_db["challenge"] == 7:
-            self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=int(user_db["challenge_progress"]) + 1)
-            if int(user_db["challenge_progress"]) >= 9:
+            self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
+            if user_db["challenge_progress"] >= 9:
                 await challengePassed(self, self.db, interaction.user.id)
         self.view.stop()
 
