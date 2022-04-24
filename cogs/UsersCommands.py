@@ -121,6 +121,20 @@ class Commands(commands.Cog):
             return
         await interaction.response.send_autocomplete([color for color in roles_colors.keys() if role_color.lower() in color.lower()])
 
+    @slash_command(name="передать-золото", description="Передать участнику золото (комиссия 7%)", guild_ids=[SERVER_ID])
+    async def pay(self, interaction: Interaction,
+                  member: Member = SlashOption(name="кому", description="Упоминание участника"),
+                  count: int = SlashOption(name="сколько", description="Количество")):
+        if db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < count:
+            await interaction.response.send_message(embed=Embed(description="У Вас нет столько золота", color=0xBF1818), ephemeral=True)
+            return
+        elif count < 0:
+            await interaction.response.send_message(embed=Embed(description="Вы не можете передать отрицательное количество золота", color=0xBF1818), ephemeral=True)
+            return
+        db.update("users", f"user_id == {member.id}", gold=db.select("users", f"user_id == {member.id}", "gold")["gold"] + count * 0.93)
+        db.update("users", f"user_id == {interaction.user.id}", gold=db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] - count)
+        await interaction.response.send_message(embed=Embed(title="Золото передано", description=f"{member.mention} получил {count * 0.93} золота", color=0x21F300), ephemeral=True)
+
     async def cog_application_command_before_invoke(self, interaction: Interaction) -> None:
         if not self.guild:
             self.guild = interaction.guild
