@@ -38,10 +38,6 @@ class ChoiceGame(View):
     async def mafia(self, _, interaction: Interaction):
         await self.create_room("mafia", interaction)
 
-    @button(style=ButtonStyle.secondary, label="Новые игры появятся позже...", emoji="🔃", row=2)
-    async def nothing(self, _, interaction: Interaction):
-        await interaction.response.pong()
-
     async def create_room(self, game, interaction: Interaction):
         if int(time()) - self.db.select("users", f"user_id == {interaction.user.id}", "last_info")["last_info"] <= 15:
             await interaction.response.pong()
