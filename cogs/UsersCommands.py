@@ -1,3 +1,5 @@
+from random import randint, choice
+
 from nextcord import slash_command, Interaction, SlashOption, File
 from nextcord.ext import commands
 
@@ -32,6 +34,21 @@ class Commands(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.guild = None
+
+    @slash_command(name="help", description="Получить список всех команд", guild_ids=[SERVER_ID])
+    @slash_command(name="помощь", description="Получить список всех команд", guild_ids=[SERVER_ID])
+    async def help(self, interaction: Interaction):
+        message = "**/создать-роль, /изменить-роль, /удалить-роль** - команды для управление персональной ролью\n" \
+                  "**/передать-золото** - команда для передачи золота любому участнику\n" \
+                  "**/бросить-кубик** - команда, которая даёт случайное число от 1 до 6 (работает только в <#714058786679291924>)\n" \
+                  "**/ударить, /обнять, /погладить, /укусить, /признаться-в-любви** - роле-плейные команды, которые уведомляют участников, которым они адресованы (работает только в <#714058786679291924>)"
+        if filter(lambda role: role.id in (ROLES["Admin"], ROLES["Moder"], ROLES["Owner"], ROLES["Vlad"]), interaction.user.roles):
+            message += "\n\nКоманды для модераторов:\n" \
+                       "**/заблокировать-в-канале, /разблокировать-в-канале** - команды для блокировки или разблокировки участников в определённых каналах\n" \
+                       "**/о-участнике** - команда выдаёт полную информацию о участнике, которая хранится в базе данных"
+        if filter(lambda role: role.id in (ROLES["Admin"], ROLES["Owner"], ROLES["Vlad"]), interaction.user.roles):
+            message += "\n\nКоманды для администраторов:\n" \
+                       "**/изменить, /удалить, /добавить** - команды изменения золота или опыта участникам"
 
     @slash_command(name="создать-роль", description="Создать собственную роль (Нужно: 5-й уровень и 300 Золота)", guild_ids=[SERVER_ID])
     async def create_role(self, interaction: Interaction,
@@ -134,6 +151,158 @@ class Commands(commands.Cog):
         db.update("users", f"user_id == {member.id}", gold=db.select("users", f"user_id == {member.id}", "gold")["gold"] + count * 0.93)
         db.update("users", f"user_id == {interaction.user.id}", gold=db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] - count)
         await interaction.response.send_message(embed=Embed(title="Золото передано", description=f"{member.mention} получил {count * 0.93} золота", color=0x21F300), ephemeral=True)
+
+    @slash_command(name="бросить-кубик", description="Бросить кубик и получить случайное число от 1 до 6 (стоимость: 2 золота)", guild_ids=[SERVER_ID])
+    async def roll(self, interaction: Interaction):
+        if interaction.channel.id != CHANNELS["Flood"]:
+            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
+            return
+        member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
+        if member_gold < 2:
+            await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
+            return
+        db.update("users", f"user_id == {interaction.user.id}", gold=member_gold - 2)
+        embed = Embed(title="Бросил кубик", description=f"Ему выпало **{randint(1, 6)}**", color=0x21F300)
+        embed.set_author(
+            name=interaction.user,
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else Embed.Empty
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @slash_command(name="ударить", description="Ударить участника (стоимость: 40 золота)", guild_ids=[SERVER_ID])
+    async def kick(self, interaction: Interaction,
+                   member: Member = SlashOption(name="кого", description="Упоминание участника")):
+        if interaction.channel.id != CHANNELS["Flood"]:
+            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
+            return
+        member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
+        if member_gold < 40:
+            await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
+            return
+        db.update("users", f"user_id == {interaction.user.id}", gold=member_gold - 40)
+        embed = Embed(color=0x21F300)
+        embed.set_author(
+            name=interaction.user,
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else Embed.Empty
+        )
+        embed.set_image(url=choice((
+            "https://c.tenor.com/SddY3UqUHOAAAAAC/kick-cartoon.gif",
+            "https://c.tenor.com/7rtyWDJlCQYAAAAC/anime-kick.gif",
+            "https://c.tenor.com/7NqY13faRvQAAAAC/taehyung-bts.gif",
+            "https://c.tenor.com/4zwRLrLMGm8AAAAC/chifuyu-chifuyu-kick.gif",
+            "https://c.tenor.com/wOCOTBGZJyEAAAAC/chikku-neesan-girl-hit-wall.gif",
+            "https://c.tenor.com/ZElYwhbPYvAAAAAd/one-punch-man-suiryu.gif",
+            "https://c.tenor.com/VST-qfF1wqQAAAAC/take-that-cat.gif"
+        )))
+        await interaction.response.send_message(f'{interaction.user.mention} {choice(("ударил", "прописал", "сломал лицо", "вдарил", "избил", "отмудохал"))} {member.mention}', embed=embed)
+
+    @slash_command(name="обнять", description="Обнять участника (стоимость: 10 золота)", guild_ids=[SERVER_ID])
+    async def hug(self, interaction: Interaction,
+                  member: Member = SlashOption(name="кого", description="Упоминание участника")):
+        if interaction.channel.id != CHANNELS["Flood"]:
+            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
+            return
+        member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
+        if member_gold < 10:
+            await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
+            return
+        db.update("users", f"user_id == {interaction.user.id}", gold=member_gold - 10)
+        embed = Embed(color=0x21F300)
+        embed.set_author(
+            name=interaction.user,
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else Embed.Empty
+        )
+        embed.set_image(url=choice((
+            "https://c.tenor.com/DxMIq9-tS5YAAAAC/milk-and-mocha-bear-couple.gif",
+            "https://c.tenor.com/XyMvYx1xcJAAAAAC/super-excited.gif",
+            "https://c.tenor.com/jX1-mxefJ54AAAAC/cat-hug.gif",
+            "https://c.tenor.com/qF7mO4nnL0sAAAAC/abra%C3%A7o-hug.gif",
+            "https://c.tenor.com/Eq-j-4gF7fQAAAAC/mlp-my-little-pony.gif",
+            "https://c.tenor.com/pE-DR_hXKMEAAAAC/hug-sully.gif",
+            "https://c.tenor.com/IRES9fJEe3cAAAAd/cat-cute-cat.gif"
+        )))
+        await interaction.response.send_message(f'{interaction.user.mention} {choice(("крепко обнял(а)", "обнял(а)", "приобнял(а)", "прыгнул(а) в объятия"))} {member.mention}', embed=embed)
+
+    @slash_command(name="погладить", description="Погладить участника по голове (стоимость: 15 золота)", guild_ids=[SERVER_ID])
+    async def pat(self, interaction: Interaction,
+                  member: Member = SlashOption(name="кого", description="Упоминание участника")):
+        if interaction.channel.id != CHANNELS["Flood"]:
+            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
+            return
+        member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
+        if member_gold < 15:
+            await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
+            return
+        db.update("users", f"user_id == {interaction.user.id}", gold=member_gold - 15)
+        embed = Embed(color=0x21F300)
+        embed.set_author(
+            name=interaction.user,
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else Embed.Empty
+        )
+        embed.set_image(url=choice((
+            "https://c.tenor.com/JsjHFFy5O40AAAAC/kitten-pat.gif",
+            "https://c.tenor.com/svNEvYEag3QAAAAC/pat-anime-pat.gif",
+            "https://c.tenor.com/jX1-mxefJ54AAAAC/cat-hug.gif",
+            "https://c.tenor.com/7lSNoSmQV-UAAAAC/funny-dog.gif",
+            "https://c.tenor.com/g_61F9hKhV4AAAAC/pat-head-pat.gif",
+            "https://c.tenor.com/3PjRNS8paykAAAAC/pat-pat-head.gif",
+            "https://c.tenor.com/f5asRSsfl-wAAAAC/good-boy-pat-on-head.gif"
+        )))
+        await interaction.response.send_message(f'{interaction.user.mention} {choice(("погладил(а) по голове", "погладил(а)"))} {member.mention}', embed=embed)
+
+    @slash_command(name="укусить", description="Укусить участника (стоимость: 25 золота)", guild_ids=[SERVER_ID])
+    async def bite(self, interaction: Interaction,
+                  member: Member = SlashOption(name="кого", description="Упоминание участника")):
+        if interaction.channel.id != CHANNELS["Flood"]:
+            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
+            return
+        member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
+        if member_gold < 25:
+            await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
+            return
+        db.update("users", f"user_id == {interaction.user.id}", gold=member_gold - 25)
+        embed = Embed(color=0x21F300)
+        embed.set_author(
+            name=interaction.user,
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else Embed.Empty
+        )
+        embed.set_image(url=choice((
+            "https://c.tenor.com/VXqink0UhmcAAAAi/bite.gif",
+            "https://c.tenor.com/sMgdnhlBl3QAAAAC/spongebob-wacky.gif",
+            "https://c.tenor.com/R_Oju0Tb-iUAAAAC/rip-bite.gif",
+            "https://c.tenor.com/9dOzFGFZxnoAAAAC/bite-anime.gif",
+            "https://c.tenor.com/pqQRoXGfjY8AAAAC/ha-yeonsoo-pointing.gif",
+            "https://c.tenor.com/Xpv7HTk-DIYAAAAC/mad-angry.gif",
+            "https://c.tenor.com/OYcQ7KWydG4AAAAC/azumanga-cat-bite-anime.gif"
+        )))
+        await interaction.response.send_message(f'{interaction.user.mention} {choice(("укусил(а)", "куснул(а)", "впился(-ась) зубами в", "попробовал(а) на вкус"))} {member.mention}', embed=embed)
+
+    @slash_command(name="признаться-в-любви", description="Рассказать участнику о своих чувствах (стоимость: 80 золота)", guild_ids=[SERVER_ID])
+    async def love(self, interaction: Interaction,
+                  member: Member = SlashOption(name="кому", description="Упоминание участника")):
+        if interaction.channel.id != CHANNELS["Flood"]:
+            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
+            return
+        member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
+        if member_gold < 80:
+            await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
+            return
+        db.update("users", f"user_id == {interaction.user.id}", gold=member_gold - 80)
+        embed = Embed(color=0x21F300)
+        embed.set_author(
+            name=interaction.user,
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else Embed.Empty
+        )
+        embed.set_image(url=choice((
+            "https://c.tenor.com/zFzhOAJ8rqwAAAAC/love.gif",
+            "https://c.tenor.com/sck9cmGxe84AAAAC/te-amo.gif",
+            "https://c.tenor.com/A8Q-EMt540oAAAAi/ye-lo-dil-sticker.gif",
+            "https://c.tenor.com/DZll3gcSP04AAAAC/love.gif",
+            "https://c.tenor.com/_OamUWxaZd0AAAAC/love-i-love-you.gif",
+            "https://c.tenor.com/xzecWUs1-lUAAAAC/anime-kawaii.gif",
+            "https://c.tenor.com/-er9VWbtMYwAAAAC/te-amo-heart.gif"
+        )))
+        await interaction.response.send_message(f'{interaction.user.mention} {choice(("влюбился(-ася)", "признаётся в любви", "любит", "не может жить без", "даёт предложение руки и сердца", "без ума от"))} {member.mention}', embed=embed)
 
     async def cog_application_command_before_invoke(self, interaction: Interaction) -> None:
         if not self.guild:
