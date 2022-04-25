@@ -11,6 +11,17 @@ from image_processing.rank import get_rank
 from config import LEVEL_POINTS, CHANNELS, SERVER_ID, ROLES
 from info import send_log, get_level
 
+challenges = {
+    1: "Отправить 5 мемов",
+    2: "Написать 50 сообщений",
+    3: "Ответить на 10 сообщений",
+    4: "Зафлудить флудилку",
+    5: "Пообщаться с ботом",
+    6: "Сыграть 1 раз в любую мини-игру",
+    7: "Сыграть 5 раз в казино",
+    8: "Пробыть 30 минут в голосовом канале"
+}
+
 
 class ShowUserCard(Button):
     def __init__(self, db, bot):
@@ -104,16 +115,6 @@ class UserRewardChallenge(View):
             self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
             return
         challenge = randint(1, 8)
-        challenges = {
-            1: "Отправить 5 мемов",
-            2: "Написать 50 сообщений",
-            3: "Ответить на 10 сообщений",
-            4: "Зафлудить флудилку",
-            5: "Пообщаться с ботом",
-            6: "Сыграть 1 раз в любую мини-игру",
-            7: "Сыграть 5 раз в казино",
-            8: "Пробыть 30 минут в голосовом канале"
-        }
         await interaction.response.send_message(
             embed=Embed(title="Ваше задание на сегодня: ", description=challenges[challenge] + (" (учитываются только каналы, где накапливается опыт)" if challenge in (2, 3) else ""), color=0x58A3FC), ephemeral=True
         )
@@ -188,4 +189,4 @@ async def challengePassed(bot, db, member):
 
     await channel.send(f"<@{member.id}>", embed=Embed(description=f"Вы выполнили ежедневное задание!\n"
                                                                   f"Вы получили 150 опыта и {plus_gold} золота {mess_level}", colour=0x21F300), delete_after=20)
-    await send_log(guild=channel.guild, log_type="MemberChallengePassed", info=f"Завершил задание {date['challenge']}", member=member, fields=[("Опыт:", "120"), ("Золото:", str(plus_gold + int(bonus_gold_level + bonus_gold_status)))])
+    await send_log(guild=channel.guild, log_type="MemberChallengePassed", info=f"Завершил задание {challenges[date['challenge']]}", member=member, fields=[("Опыт:", "120"), ("Золото:", str(plus_gold + int(bonus_gold_level + bonus_gold_status)))])

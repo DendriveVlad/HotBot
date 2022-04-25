@@ -138,7 +138,7 @@ class Bot(commands.Bot):
 
             match date["challenge"]:
                 case 1:
-                    if message.channel.id == CHANNELS["Memes"]:
+                    if message.channel.id == CHANNELS["Memes"] and (message.attachments or message.content.startswith("https://")):
                         db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
                         if date["challenge_progress"] >= 4:
                             await challengePassed(self, db, message.author)
