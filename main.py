@@ -332,8 +332,8 @@ class Bot(commands.Bot):
             elif before.communication_disabled_until:
                 await send_log(guild=before.guild, log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
         elif before.nick != after.nick:
-            await send_log(guild=before.guild, log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),
-                                                                                                                                                                     ("На:", after.nick if after.nick else after.name)], color=0xE5AE46)
+            await send_log(guild=before.guild, log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod and mod.id != before.id else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),
+                                                                                                                                                                                             ("На:", after.nick if after.nick else after.name)], color=0xE5AE46)
 
     @tasks.loop(minutes=5)
     async def check(self):
