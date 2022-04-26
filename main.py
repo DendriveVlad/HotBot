@@ -335,7 +335,7 @@ class Bot(commands.Bot):
             await send_log(guild=before.guild, log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod and mod.id != before.id else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),
                                                                                                                                                                                              ("На:", after.nick if after.nick else after.name)], color=0xE5AE46)
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=30)
     async def check(self):
         dt = db.select("info", "", "datetime")["datetime"]
         if int(time()) - dt >= 60 * 60 * 24 * 2:

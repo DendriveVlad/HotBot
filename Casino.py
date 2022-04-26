@@ -79,9 +79,9 @@ class SlotsChoice(Select):
             await interaction.edit_original_message(content=f"Крутим{'.' * (i % 3 + 1)}\n" + "".join(result))
             await sleep(0.5)
         await interaction.edit_original_message(content="".join(result))
-        gold_multiply = sum(map(lambda x: Decimal(slots[x]), result)) * (10 * 3 / 10 if result.count(result[0]) == 3 else 1)
+        gold_multiply = sum(map(lambda x: Decimal(slots[x]), result)) * (3 if result.count(result[0]) == 3 else 1)
         profit = int(int(self.values[0]) * (gold_multiply - 1))
-        if gold_multiply == int(gold_multiply):
+        if gold_multiply == 1:
             await interaction.followup.send(embed=Embed(title="Вы вышли в 0", colour=0xEAD445), ephemeral=True)
         elif int(gold_multiply):
             if gold_multiply == 7.2:
@@ -91,8 +91,7 @@ class SlotsChoice(Select):
                 await interaction.followup.send(embed=Embed(title=f"Поздравляю, Вы выбили 3 в ряд!\n"
                                                                   f"Вы выиграли {profit} золота", colour=0x21F300), ephemeral=True)
             else:
-                await interaction.followup.send(embed=Embed(title=f"Поздравляю, Вы выбили 3 в ряд!\n"
-                                                                  f"Вы выиграли {profit} золота", colour=0x21F300), ephemeral=True)
+                await interaction.followup.send(embed=Embed(title=f"Вы выиграли {profit} золота", colour=0x21F300), ephemeral=True)
         else:
             await interaction.followup.send(embed=Embed(title=f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
         user_db = self.db.select("users", f"user_id == {interaction.user.id}", "gold", "points", "challenge", "challenge_progress")
@@ -100,7 +99,7 @@ class SlotsChoice(Select):
         await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
         if user_db["challenge"] == 7:
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
-            if user_db["challenge_progress"] >= 9:
+            if user_db["challenge_progress"] >= 4:
                 await challengePassed(self, self.db, interaction.user.id)
         self.view.stop()
 
@@ -151,7 +150,7 @@ class Dice(View):
             await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
             if user_db["challenge"] == 7:
                 self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
-                if user_db["challenge_progress"] >= 9:
+                if user_db["challenge_progress"] >= 4:
                     await challengePassed(self, self.db, interaction.user.id)
             self.stop()
         else:
@@ -250,7 +249,7 @@ class MoneySnail(Select):
         await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {view.profit} золота", member=interaction.user)
         if user_db["challenge"] == 7:
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
-            if user_db["challenge_progress"] >= 9:
+            if user_db["challenge_progress"] >= 4:
                 await challengePassed(self, self.db, interaction.user.id)
         self.view.stop()
 

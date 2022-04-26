@@ -118,7 +118,7 @@ class UserRewardChallenge(View):
         await interaction.response.send_message(
             embed=Embed(title="Ваше задание на сегодня: ", description=challenges[challenge] + (" (учитываются только каналы, где накапливается опыт)" if challenge in (2, 3) else ""), color=0x58A3FC), ephemeral=True
         )
-        self.db.update("users", f"user_id == {interaction.user.id}", challenge=challenge, last_challenge=dt + (60 * 60 * 24))
+        self.db.update("users", f"user_id == {interaction.user.id}", challenge=challenge, challenge_progress=0, last_challenge=dt + (60 * 60 * 24))
         await send_log(guild=interaction.guild, log_type="MemberGetChallenge", info=f"Получил задание {challenges[challenge]}", member=interaction.user)
 
 
