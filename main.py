@@ -41,7 +41,7 @@ class Bot(commands.Bot):
             self.check.start()
         await hub(utils.get(guild.channels, id=CHANNELS["Games"]), self, db)
         await requests(utils.get(guild.channels, id=CHANNELS["requests"]), self)
-        await casino(utils.get(guild.channels, id=CHANNELS["Casino"]), db)
+        await casino(utils.get(guild.channels, id=CHANNELS["Casino"]), db, self)
         self.loop.create_task(top(utils.get(guild.channels, id=CHANNELS["Top"]), self, db))
         print(ct(), "Hello!")
 
