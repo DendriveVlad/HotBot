@@ -101,7 +101,7 @@ class SlotsChoice(Select):
         if user_db["challenge"] == 7:
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
             if user_db["challenge_progress"] >= 4:
-                await challengePassed(self.bot, self.db, interaction.user.id)
+                await challengePassed(self.bot, self.db, interaction.user)
         self.view.stop()
 
 
@@ -153,7 +153,7 @@ class Dice(View):
             if user_db["challenge"] == 7:
                 self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
                 if user_db["challenge_progress"] >= 4:
-                    await challengePassed(self.bot, self.db, interaction.user.id)
+                    await challengePassed(self.bot, self.db, interaction.user)
             self.stop()
         else:
             await interaction.response.defer()
@@ -253,7 +253,7 @@ class MoneySnail(Select):
         if user_db["challenge"] == 7:
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
             if user_db["challenge_progress"] >= 4:
-                await challengePassed(self.bot, self.db, interaction.user.id)
+                await challengePassed(self.bot, self.db, interaction.user)
         self.view.stop()
 
 
