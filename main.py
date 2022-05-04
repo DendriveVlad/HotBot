@@ -23,6 +23,7 @@ db = DB()
 class Bot(commands.Bot):
     def __init__(self):
         super().__init__("/", intents=Intents.all())
+        self.days_count = 0
         self.first_start = 0
         self.spam_count = []
 
@@ -338,10 +339,14 @@ class Bot(commands.Bot):
     @tasks.loop(minutes=30)
     async def check(self):
         dt = db.select("info", "", "datetime")["datetime"]
+        guild = self.get_guild(SERVER_ID)
+
         if int(time()) - dt >= 60 * 60 * 24 * 2:
+            self.days_count += 1
+            rest = utils.get(guild.channels, id=CHANNELS["notRestarts"])
+            await rest.edit(name=f"{self.days_count} ДНЕЙ БЕЗ РЕСТАРТОВ")
             db.update("info", f"datetime=={dt}", datetime=dt + (60 * 60 * 24))
 
-        guild = self.get_guild(SERVER_ID)
         channel = utils.get(guild.channels, id=CHANNELS["Online"])
         online_members = guild.member_count
         for member in guild.members:

@@ -43,6 +43,7 @@ class SlotsChoice(Select):
             options=[SelectOption(label=str(cost)) for cost in (filter(lambda x: x <= user_gold, game_costs))])
 
     async def callback(self, interaction: Interaction):
+        self.view.stop()
         slots_chance = default_slots_chance.copy()
         match int(self.values[0]):
             case 50:
@@ -102,8 +103,6 @@ class SlotsChoice(Select):
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
             if user_db["challenge_progress"] >= 4:
                 await challengePassed(self.bot, self.db, interaction.user)
-        self.view.stop()
-
 
 class Dice(View):
     def __init__(self, db, user_id, bot):
@@ -116,6 +115,7 @@ class Dice(View):
     async def interaction_check(self, interaction: Interaction):
         children: list[Select] = self.children
         if children[0].values and children[1].values:
+            self.stop()
             gold = int(children[0].values[0])
             dice_num = int(children[1].values[0])
             await interaction.response.send_message("Бросаю кубики...", ephemeral=True)
@@ -154,7 +154,6 @@ class Dice(View):
                 self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
                 if user_db["challenge_progress"] >= 4:
                     await challengePassed(self.bot, self.db, interaction.user)
-            self.stop()
         else:
             await interaction.response.defer()
 
@@ -187,11 +186,11 @@ class Snail(View):
         await interaction.response.pong()
         self.place -= 1
         if randint(1, 100) <= self.chance:
+            self.stop()
             self.fall = True
             await self.original_interaction.edit_original_message(content="✴️" * 11 + "\n🟫" + "🟦" * (self.place - 1) + "✴️" + "🟦" * (9 - self.place) + "🟫",
                                                                   embed=Embed(description=f"Вы упали", colour=0xBF1818),
                                                                   )
-            self.stop()
             return
         self.chance += 5
         self.profit = int(self.cost * self.places[self.place] - self.cost)
@@ -202,10 +201,10 @@ class Snail(View):
                                                                                           f"Пройдя следующую плитку Вы получите: {int(self.cost * self.places[self.place - 1] - self.cost)} золота"),
                                                                   )
         else:
+            self.stop()
             await self.original_interaction.edit_original_message(content="🐌" + "✴️" * 10 + "\n""🟫🟦🟦🟦🟦🟦🟦🟦🟦🟦🟫",
                                                                   embed=Embed(description=f"Вы прошли", colour=0x21F300))
             self.win = True
-            self.stop()
 
     @button(label="Остановиться", style=ButtonStyle.secondary, emoji="🛑")
     async def stop_game(self, _, interaction: Interaction):
@@ -222,6 +221,7 @@ class MoneySnail(Select):
         self.bot = bot
 
     async def callback(self, interaction: Interaction):
+        self.view.stop()
         view = Snail(interaction, int(self.values[0]))
         await interaction.response.send_message("✴️✴️✴️✴️✴️✴️✴️✴️✴️✴️🐌\n"
                                                 "🟫🟦🟦🟦🟦🟦🟦🟦🟦🟦🟫",
@@ -254,8 +254,6 @@ class MoneySnail(Select):
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
             if user_db["challenge_progress"] >= 4:
                 await challengePassed(self.bot, self.db, interaction.user)
-        self.view.stop()
-
 
 class CasinoChoices(View):
     def __init__(self, db, bot):
