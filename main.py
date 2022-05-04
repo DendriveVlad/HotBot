@@ -342,8 +342,8 @@ class Bot(commands.Bot):
         guild = self.get_guild(SERVER_ID)
 
         if int(time()) - dt >= 60 * 60 * 24 * 2:
-            rest = utils.get(guild.channels, id=CHANNELS["notRestarts"])
             self.days_count += 1
+            rest = utils.get(guild.channels, id=CHANNELS["notRestarts"])
             await rest.edit(name=f"{self.days_count} ДНЕЙ БЕЗ РЕСТАРТОВ")
             db.update("info", f"datetime=={dt}", datetime=dt + (60 * 60 * 24))
 
