@@ -1,3 +1,5 @@
+import datetime
+
 from nextcord import slash_command, Embed, Interaction, Member, SlashOption, TextChannel
 from nextcord.ext import commands
 
@@ -23,7 +25,7 @@ class Admin(commands.Cog):
             return
 
         await channel.set_permissions(member, read_messages=False)
-        await interaction.response.send_message(embed=Embed(title=f"Участник заблокирован в канале {channel}", colour=0x21F300), ephemeral=False)
+        await interaction.response.send_message(embed=Embed(title=f"Участник {member} заблокирован в канале {channel}", colour=0x21F300), ephemeral=False)
 
     @slash_command(name="разблокировать-в-канале", description="Разблокировать  участника в определённом канале", guild_ids=[SERVER_ID])
     async def channel_unban(self, interaction: Interaction,
@@ -34,7 +36,7 @@ class Admin(commands.Cog):
             return
 
         await channel.set_permissions(member, read_messages=None)
-        await interaction.response.send_message(embed=Embed(title=f"Участник разблокирован в канале {channel}", colour=0x21F300), ephemeral=False)
+        await interaction.response.send_message(embed=Embed(title=f"Участник {member} разблокирован в канале {channel}", colour=0x21F300), ephemeral=False)
 
     @slash_command(name="изменить", description="Изменить количество золота или опыта участника но новое значение", guild_ids=[SERVER_ID])
     async def set(self, interaction: Interaction,
@@ -85,6 +87,31 @@ class Admin(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @slash_command(name="замутить", description="Выдать мут (Таймаут) участнику на определённое время", guild_ids=[SERVER_ID])
+    async def mute(self, interaction: Interaction,
+                   member: Member = SlashOption("кого", description="Упоминание пользователя"),
+                   mute_time: str = SlashOption("на-сколько", description="Время и код-форматирования (h - часы, d - дни, w - недели)"),
+                   reason: str = SlashOption("по-причине", description="Что нарушил участник")):
+        if not await self.__checks(interaction, "1234", member=member, intTime=mute_time[:-1], timeFormat=mute_time[-1]):
+            return
+
+        match mute_time[-1]:
+            case "h":
+                await member.timeout(timeout=datetime.timedelta(hours=int(mute_time[:-1])), reason=reason)
+            case "d":
+                await member.timeout(timeout=datetime.timedelta(days=int(mute_time[:-1])), reason=reason)
+            case "w":
+                await member.timeout(timeout=datetime.timedelta(weeks=int(mute_time[:-1])), reason=reason)
+        await interaction.response.send_message(embed=Embed(title=f"Участник {member} получил мут", colour=0x21F300), ephemeral=False)
+
+    @mute.on_autocomplete("mute_time")
+    async def mute_time(self, interaction: Interaction, mute_time: str):
+        try:
+            await interaction.response.send_autocomplete([f"{int(mute_time)}{i}" for i in "hdw"])
+        except ValueError:
+            await interaction.response.send_autocomplete([f"{1}{i}" for i in "hdw"])
+            return
+
     async def cog_application_command_before_invoke(self, interaction: Interaction) -> None:
         if not self.guild:
             self.guild = interaction.guild
@@ -96,14 +123,43 @@ class Admin(commands.Cog):
     async def __checks(self, interaction: Interaction, checks, **other) -> bool:
         """
         :param checks:
-            1 - Проверка на права администратора (Больше нет нужды)
-            2 - Проверка на права модератора (Больше нет нужды)
-            3 - Проверка на админ-бот канал (Больше нет нужды)
+            1 - Проверка на 0 или отрицательное время мута и на буквы в переменной времени
+            2 - Проверка на правильность временного формата
+            3 - Проверка на слишком большое время мута
             4 - Проверка на заданного бота-пользователя
             5 - Проверка на правильность заданного канала
             6 - Проверка на отрицательное значение в count
             7 - Проверка на слишком большое значение в count
         """
+
+        if "1" in checks:
+            try:
+                if int(other["intTime"]) < 1:
+                    await interaction.response.send_message(embed=Embed(title="Значение времени должно быть как минимум 1", colour=0xBF1818), ephemeral=True)
+                    return False
+            except ValueError:
+                await interaction.response.send_message(embed=Embed(title="Неверно заданно число времени", colour=0xBF1818), ephemeral=True)
+                return False
+
+        if "2" in checks and other["timeFormat"] not in "hdw":
+            if int(other["intTime"]) > 2160:
+                await interaction.response.send_message(embed=Embed(title="Не верно указан временной формат", colour=0xBF1818), ephemeral=True)
+                return False
+
+        if "3" in checks:
+            match other["timeFormat"]:
+                case "h":
+                    if int(other["intTime"]) > 672:
+                        await interaction.response.send_message(embed=Embed(title="Нельзя выдать мут более, чем на 28 дней", colour=0xBF1818), ephemeral=True)
+                        return False
+                case "d":
+                    if int(other["intTime"]) > 28:
+                        await interaction.response.send_message(embed=Embed(title="Нельзя выдать мут более, чем на 28 дней", colour=0xBF1818), ephemeral=True)
+                        return False
+                case "w":
+                    if int(other["intTime"]) > 4:
+                        await interaction.response.send_message(embed=Embed(title="Нельзя выдать мут более, чем на 2 недель", colour=0xBF1818), ephemeral=True)
+                        return False
 
         if "4" in checks and other["member"].bot:
             await interaction.response.send_message(embed=Embed(title="Использование команд на ботов отключено", colour=0xBF1818), ephemeral=True)
@@ -114,7 +170,7 @@ class Admin(commands.Cog):
             return False
 
         if "6" in checks and int(other["count"]) < 0:
-            await interaction.response.send_message(embed=Embed(title="Участник не может иметь отрицательное количество золота или очков", colour=0xBF1818), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(title="Нельзя вписывать отрицательное число", colour=0xBF1818), ephemeral=True)
             return False
 
         if "7" in checks and (int(other["count"]) > 500000):

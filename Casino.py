@@ -104,6 +104,7 @@ class SlotsChoice(Select):
             if user_db["challenge_progress"] >= 4:
                 await challengePassed(self.bot, self.db, interaction.user)
 
+
 class Dice(View):
     def __init__(self, db, user_id, bot):
         super(Dice, self).__init__()
@@ -255,6 +256,7 @@ class MoneySnail(Select):
             if user_db["challenge_progress"] >= 4:
                 await challengePassed(self.bot, self.db, interaction.user)
 
+
 class CasinoChoices(View):
     def __init__(self, db, bot):
         super(CasinoChoices, self).__init__(timeout=None)
@@ -266,6 +268,7 @@ class CasinoChoices(View):
         if int(time()) - self.db.select("users", f"user_id == {interaction.user.id}", "last_info")["last_info"] <= 15:
             await interaction.response.pong()
             return
+        self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
         if self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < 10:
             await interaction.response.send_message(embed=Embed(title="У Вас недостаточно золота для игры в казино", colour=0xBF1818), ephemeral=True)
             return
@@ -279,6 +282,7 @@ class CasinoChoices(View):
         if int(time()) - self.db.select("users", f"user_id == {interaction.user.id}", "last_info")["last_info"] <= 15:
             await interaction.response.pong()
             return
+        self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
         if self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < 10:
             await interaction.response.send_message(embed=Embed(title="У Вас недостаточно золота для игры в казино", colour=0xBF1818), ephemeral=True)
             return
@@ -292,6 +296,7 @@ class CasinoChoices(View):
         if int(time()) - self.db.select("users", f"user_id == {interaction.user.id}", "last_info")["last_info"] <= 15:
             await interaction.response.pong()
             return
+        self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
         if self.db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"] < 10:
             await interaction.response.send_message(embed=Embed(title="У Вас недостаточно золота для игры в казино", colour=0xBF1818), ephemeral=True)
             return

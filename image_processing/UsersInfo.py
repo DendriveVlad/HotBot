@@ -14,7 +14,7 @@ from info import send_log, get_level
 challenges = {
     1: "Отправить 5 мемов",
     2: "Написать 50 сообщений",
-    3: "Ответить на 10 сообщений",
+    3: "Ответить на 20 сообщений",
     4: "Зафлудить флудилку",
     5: "Пообщаться с ботом",
     6: "Сыграть 1 раз в любую мини-игру",
@@ -111,7 +111,7 @@ class UserRewardChallenge(View):
             return
         date = self.db.select("users", f"user_id == {interaction.user.id}", "last_challenge")
         if int(time()) - date["last_challenge"] <= 60 * 60 * 24:
-            await interaction.response.send_message(embed=Embed(description=f"<@{interaction.user.id}>, Вы сегодня уже получили ежедневное задание", color=0xBF1818), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(description=f"<@{interaction.user.id}>, Вы сегодня уже получили ежедневное задание" + (f"\nВаше задание на сегодня: {date['challenge']}" if date["challenge"] else ""), color=0xBF1818), ephemeral=True)
             self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
             return
         challenge = randint(1, 8)

@@ -139,9 +139,14 @@ class Bot(commands.Bot):
 
             match date["challenge"]:
                 case 1:
-                    if message.channel.id == CHANNELS["Memes"] and (message.attachments or message.content.startswith("https://")):
-                        db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
-                        if date["challenge_progress"] >= 4:
+                    if message.channel.id == CHANNELS["Memes"]:
+                        if message.attachments:
+                            db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + len(message.attachments))
+                            date["challenge_progress"] += len(message.attachments)
+                        elif "https://" in message.content or "http://" in message.content:
+                            db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + message.content.count("https://") + message.content.count("http://"))
+                            date["challenge_progress"] += message.content.count("https://") + message.content.count("http://")
+                        if date["challenge_progress"] >= 5:
                             await challengePassed(self, db, message.author)
                 case 2:
                     db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
@@ -150,7 +155,7 @@ class Bot(commands.Bot):
                 case 3:
                     if message.type == MessageType.reply:
                         db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
-                        if date["challenge_progress"] >= 9:
+                        if date["challenge_progress"] >= 19:
                             await challengePassed(self, db, message.author)
 
             if int(time()) > date["last_message"] + 20:
@@ -344,7 +349,8 @@ class Bot(commands.Bot):
         if int(time()) - dt >= 60 * 60 * 24 * 2:
             self.days_count += 1
             rest = utils.get(guild.channels, id=CHANNELS["notRestarts"])
-            await rest.edit(name=f"{self.days_count} ДНЕЙ БЕЗ РЕСТАРТОВ")
+            await rest.edit(name=f"ДНЕЙ БЕЗ РЕСТАРТОВ: {self.days_count}")
+
             db.update("info", f"datetime=={dt}", datetime=dt + (60 * 60 * 24))
 
         channel = utils.get(guild.channels, id=CHANNELS["Online"])
