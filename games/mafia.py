@@ -28,8 +28,8 @@ async def mafia_game(room, owner, bot, db, game_hub):
 
     try:
         member_gold_maximum = db.select("users", f"user_id == {owner}", "gold")["gold"]
-        if member_gold_maximum > 100:
-            member_gold_maximum = 100
+        if member_gold_maximum > 1000:
+            member_gold_maximum = 1000
         if member_gold_maximum:
             await room.send(f"<@{owner}>, игра создана. Осталось только её настроить.\n"
                             f"Напишите стоимость для входа в игру (0 - {member_gold_maximum}):")

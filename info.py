@@ -20,7 +20,8 @@ async def send_log(guild, log_type: str, info: str = "", member: Member = None, 
         embed.add_field(name=fields[0], value=fields[-1] if len(fields[-1]) else "~~не текст~~")
     elif isinstance(fields, list):
         for field in fields:
-            embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
+            if field:
+                embed.add_field(name=field[0], value=field[-1] if len(field[-1]) else "~~не текст~~")
     await channel.send(embed=embed)
 
 

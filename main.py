@@ -23,8 +23,6 @@ db = DB()
 class Bot(commands.Bot):
     def __init__(self):
         super().__init__("/", intents=Intents.all())
-        self.days_count = 0
-        self.first_start = 0
         self.spam_count = []
 
     async def on_ready(self):
@@ -66,21 +64,23 @@ class Bot(commands.Bot):
     async def on_member_remove(member: Member):
         if member.pending:
             return
-        mod = None
+        mod, reason = None, None
         async for kick in member.guild.audit_logs(limit=3, action=AuditLogAction.kick):
             if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == member.id:
                 mod = kick.user
+                reason = kick.reason
                 break
-        await send_log(guild=member.guild, log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, color=0xBF1818)
+        await send_log(guild=member.guild, log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, fields=("Причина:", reason) if reason else (), color=0xBF1818)
 
     @staticmethod
     async def on_member_ban(guild: Guild, user: User | Member):
-        mod = None
+        mod, reason = None, None
         async for kick in guild.audit_logs(limit=3, action=AuditLogAction.ban):
             if int(time()) - int(kick.created_at.timestamp()) <= 50 and kick.target.id == user.id:
                 mod = kick.user
+                reason = kick.reason
                 break
-        await send_log(guild=guild, log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=user, color=0xBF1818)
+        await send_log(guild=guild, log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=user, fields=("Причина:", reason) if reason else (), color=0xBF1818)
         db.delete("users", f"user_id == {user.id}")
 
     async def on_message(self, message: Message):
@@ -154,9 +154,11 @@ class Bot(commands.Bot):
                         await challengePassed(self, db, message.author)
                 case 3:
                     if message.type == MessageType.reply:
-                        db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
-                        if date["challenge_progress"] >= 19:
-                            await challengePassed(self, db, message.author)
+                        reference = await message.channel.fetch_message(message.reference.message_id)
+                        if reference.author != message.author:
+                            db.update("users", f"user_id == {message.author.id}", challenge_progress=date["challenge_progress"] + 1)
+                            if date["challenge_progress"] >= 19:
+                                await challengePassed(self, db, message.author)
 
             if int(time()) > date["last_message"] + 20:
                 db.update("users", f"user_id == '{message.author.id}'", points=date["points"] + 10, last_message=int(time()))
@@ -182,17 +184,19 @@ class Bot(commands.Bot):
         if type(message.channel) is DMChannel or message.channel.category_id in CATEGORIES.values() or message.author.id in self.spam_count:
             return
 
-        mod = None
+        mod, reason = None, None
         async for deleted_message in message.guild.audit_logs(limit=3, action=AuditLogAction.message_delete):
             if int(time()) - int(deleted_message.created_at.timestamp()) <= 60 and deleted_message.target.id == message.author.id:
                 mod = deleted_message.user
+                reason = deleted_message.reason
                 break
 
-        await send_log(guild=message.guild, log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author, fields=("Сообщение:", message.content[:1000] + "..."), color=0xBF1818)
+        await send_log(guild=message.guild, log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author,
+                       fields=[("Сообщение:", message.content[:1000] + ("..." if len(message.content) > 1000 else "") if message.content else "--не текст--"), ("Причина:", reason) if reason else ()], color=0xBF1818)
 
     @staticmethod
     async def on_message_edit(before: Message, after: Message):
-        if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID or (not before.attachments and after.attachments):
+        if type(before.channel) is DMChannel or before.channel.category_id == CATEGORIES["Bot"] or before.author.id == BOT_ID or before.content == after.content:
             return
 
         if len(after.content) + len(before.content) <= 256:
@@ -233,7 +237,7 @@ class Bot(commands.Bot):
                 return
             index += 1
 
-    async def on_voice_state_update(self, member: Message, before: VoiceState, after: VoiceState):
+    async def on_voice_state_update(self, member: Member, before: VoiceState, after: VoiceState):
         if not after.channel and before.channel:
             await send_log(guild=member.guild, log_type="VoiceDisconnect", info="Вышел из голосового канала", member=member)
             date = db.select("users", f"user_id == {member.id}", "points", "talk_time", "challenge")
@@ -262,15 +266,15 @@ class Bot(commands.Bot):
             date = db.select("private_voices", f"channel_owner == {member.id}", "channel_id", "control_id")
             if before.channel.id not in IGNORE_VC and before.channel.category_id == CATEGORIES["Voice channels"]:
                 if len(before.channel.members) != 0:
-                    if not (len(before.channel.members) == 1 and before.channel.members[0].id in BOTS.values()):
+                    if not (len(before.channel.members) == 1 and before.channel.members[0].bot):
                         if after.channel:
                             if after.channel.id == CHANNELS["createVC"] and date:
                                 await member.move_to(channel=before.channel, reason="Возвращение в личный канал")
                                 return
                             break
-                        return
+                        if not date:
+                            return
 
-                date = db.select("private_voices", f"channel_owner == {member.id}", "channel_id", "control_id")
                 if date:
                     if after.channel:
                         if after.channel.id == CHANNELS["createVC"]:
@@ -283,7 +287,7 @@ class Bot(commands.Bot):
                         "control_id": da["control_id"],
                     }
                     member = self.get_user(da["channel_owner"])
-                db.delete("private_voices", f"channel_id == {before.channel.id}")
+                db.delete("private_voices", f"channel_owner == {member.id}")
                 voice, text = utils.get(serv.voice_channels, id=date["channel_id"]), utils.get(serv.text_channels, id=date["control_id"])
                 await voice.delete()
                 await text.delete()
@@ -311,19 +315,20 @@ class Bot(commands.Bot):
 
     @staticmethod
     async def on_member_update(before: Member, after: Member):
-        mod = None
+        mod, reason = None, None
         async for member_update in before.guild.audit_logs(limit=3, action=AuditLogAction.member_update):
             if int(time()) - int(member_update.created_at.timestamp()) <= 50 and member_update.target.id == before.id:
                 mod = member_update.user
+                reason = member_update.reason
                 break
         if before.roles != after.roles:
             for role in after.roles:
                 if role not in before.roles:
-                    await send_log(guild=before.guild, log_type="MemberRoleGet", info=f"Получил роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD88A1F)
+                    await send_log(guild=before.guild, log_type="MemberRoleGet", info=f"Получил роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, fields=("Причина:", reason) if reason else (), color=0xD88A1F)
                     break
             for role in before.roles:
                 if role not in after.roles:
-                    await send_log(guild=before.guild, log_type="MemberRoleRemove", info=f"Потерял роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD85A1F)
+                    await send_log(guild=before.guild, log_type="MemberRoleRemove", info=f"Потерял роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, fields=("Причина:", reason) if reason else (), color=0xD85A1F)
                     break
             new = utils.get(before.guild.roles, id=ROLES["Newbie"])
             old = utils.get(before.guild.roles, id=ROLES["Old"])
@@ -334,12 +339,12 @@ class Bot(commands.Bot):
                     await after.remove_roles(new)
         elif before.communication_disabled_until != after.communication_disabled_until:
             if after.communication_disabled_until:
-                await send_log(guild=before.guild, log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=("Мут будет действовать до:", f"<t:{int(after.communication_disabled_until.timestamp())}>"), color=0xE5AE46)
+                await send_log(guild=before.guild, log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=[("Мут будет действовать до:", f"<t:{int(after.communication_disabled_until.timestamp())}>"), ("Причина:", reason) if reason else ()], color=0xE5AE46)
             elif before.communication_disabled_until:
                 await send_log(guild=before.guild, log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
         elif before.nick != after.nick:
-            await send_log(guild=before.guild, log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod and mod.id != before.id else ''}", member=after, fields=[("С:", before.nick if before.nick else before.name),
-                                                                                                                                                                                             ("На:", after.nick if after.nick else after.name)], color=0xE5AE46)
+            await send_log(guild=before.guild, log_type="MemberNickUpdate", info=f"Изменён ник {'модератором ' + mod.mention if mod and mod.id != before.id else ''}", member=after, fields=[("До:", before.nick if before.nick else before.name),
+                                                                                                                                                                                             ("После:", after.nick if after.nick else after.name)], color=0xE5AE46)
 
     @tasks.loop(minutes=30)
     async def check(self):
@@ -347,10 +352,6 @@ class Bot(commands.Bot):
         guild = self.get_guild(SERVER_ID)
 
         if int(time()) - dt >= 60 * 60 * 24 * 2:
-            self.days_count += 1
-            rest = utils.get(guild.channels, id=CHANNELS["notRestarts"])
-            await rest.edit(name=f"ДНЕЙ БЕЗ РЕСТАРТОВ: {self.days_count}")
-
             db.update("info", f"datetime=={dt}", datetime=dt + (60 * 60 * 24))
 
         channel = utils.get(guild.channels, id=CHANNELS["Online"])
@@ -370,6 +371,7 @@ class Bot(commands.Bot):
                     db.update("users", f"user_id == {member.id}", role=0, role_paid_time=0)
                 else:
                     db.update("users", f"user_id == {member.id}", gold=member_data["gold"] - 100, role_paid_time=member_data["role_paid_time"] + 60 * 60 * 24 * 7)
+                    await send_log(guild, log_type="PrivateRolePayment", info=f"Роль {member} продлена")
 
         new_name = f"ОНЛАЙН: {online_members}/{guild.member_count}"
         if new_name == channel.name:
