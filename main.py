@@ -70,7 +70,7 @@ class Bot(commands.Bot):
                 mod = kick.user
                 reason = kick.reason
                 break
-        await send_log(guild=member.guild, log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, fields=("Причина:", reason) if reason else (), color=0xBF1818)
+        await send_log(guild=member.guild, log_type="MemberKick" if mod else "MemberLeave", info=f"Кикнут модератором {mod.mention}" if mod else "Покинул сервер", member=member, fields=("Причина:", reason) if reason else None, color=0xBF1818)
 
     @staticmethod
     async def on_member_ban(guild: Guild, user: User | Member):
@@ -80,7 +80,7 @@ class Bot(commands.Bot):
                 mod = kick.user
                 reason = kick.reason
                 break
-        await send_log(guild=guild, log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=user, fields=("Причина:", reason) if reason else (), color=0xBF1818)
+        await send_log(guild=guild, log_type="MemberBan", info=f"Забанен модератором {mod.mention}" if mod else "Забанен", member=user, fields=("Причина:", reason) if reason else None, color=0xBF1818)
         db.delete("users", f"user_id == {user.id}")
 
     async def on_message(self, message: Message):
@@ -184,15 +184,14 @@ class Bot(commands.Bot):
         if type(message.channel) is DMChannel or message.channel.category_id in CATEGORIES.values() or message.author.id in self.spam_count:
             return
 
-        mod, reason = None, None
+        mod = None
         async for deleted_message in message.guild.audit_logs(limit=3, action=AuditLogAction.message_delete):
             if int(time()) - int(deleted_message.created_at.timestamp()) <= 60 and deleted_message.target.id == message.author.id:
                 mod = deleted_message.user
-                reason = deleted_message.reason
                 break
 
         await send_log(guild=message.guild, log_type="MessageRemove", info=f"Удалено сообщение в канале {message.channel.mention} {'модератором ' + mod.mention if mod else 'пользователем'}", member=message.author,
-                       fields=[("Сообщение:", message.content[:1000] + ("..." if len(message.content) > 1000 else "") if message.content else "--не текст--"), ("Причина:", reason) if reason else ()], color=0xBF1818)
+                       fields=("Сообщение:", message.content[:1000] + ("..." if len(message.content) > 1000 else "") if message.content else "--не текст--"), color=0xBF1818)
 
     @staticmethod
     async def on_message_edit(before: Message, after: Message):
@@ -307,9 +306,14 @@ class Bot(commands.Bot):
                 text = await serv.create_text_channel("панель-управления-каналом", category=after.channel.category, overwrites=overwrites_text)
                 db.insert("private_voices", channel_id=voice.id, channel_owner=member.id, control_id=text.id)
                 await send_log(guild=serv, log_type="CreatePrivateChannel", info=f"Приватный канал создан", member=member)
-                await member.move_to(channel=voice, reason="Создал канал для себя")
+                try:
+                    await member.move_to(channel=voice, reason="Создал канал для себя")
+                except errors.HTTPException:
+                    await voice.delete()
+                    await text.delete()
+                    await send_log(guild=serv, log_type="RemovePrivateChannel", info=f"Приватный канал удалён", member=member)
                 await text.send(f"<@{member.id}>", delete_after=1)
-                while 1:
+                while True:
                     if await voice_control_panel(text, voice, member, self, db):
                         break
 
@@ -324,11 +328,11 @@ class Bot(commands.Bot):
         if before.roles != after.roles:
             for role in after.roles:
                 if role not in before.roles:
-                    await send_log(guild=before.guild, log_type="MemberRoleGet", info=f"Получил роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, fields=("Причина:", reason) if reason else (), color=0xD88A1F)
+                    await send_log(guild=before.guild, log_type="MemberRoleGet", info=f"Получил роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD88A1F)
                     break
             for role in before.roles:
                 if role not in after.roles:
-                    await send_log(guild=before.guild, log_type="MemberRoleRemove", info=f"Потерял роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, fields=("Причина:", reason) if reason else (), color=0xD85A1F)
+                    await send_log(guild=before.guild, log_type="MemberRoleRemove", info=f"Потерял роль {role.mention} {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0xD85A1F)
                     break
             new = utils.get(before.guild.roles, id=ROLES["Newbie"])
             old = utils.get(before.guild.roles, id=ROLES["Old"])
@@ -339,7 +343,7 @@ class Bot(commands.Bot):
                     await after.remove_roles(new)
         elif before.communication_disabled_until != after.communication_disabled_until:
             if after.communication_disabled_until:
-                await send_log(guild=before.guild, log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=[("Мут будет действовать до:", f"<t:{int(after.communication_disabled_until.timestamp())}>"), ("Причина:", reason) if reason else ()], color=0xE5AE46)
+                await send_log(guild=before.guild, log_type="MemberTimeoutGet", info=f"Получил мут {'от модератора ' + mod.mention if mod else ''}", member=after, fields=[("Мут будет действовать до:", f"<t:{int(after.communication_disabled_until.timestamp())}>"), ("Причина:", reason) if reason else None], color=0xE5AE46)
             elif before.communication_disabled_until:
                 await send_log(guild=before.guild, log_type="MemberTimeoutEnd", info=f"Закончился мут {'с помощью модератора ' + mod.mention if mod else ''}", member=after, color=0x8CE546)
         elif before.nick != after.nick:
