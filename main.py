@@ -375,7 +375,7 @@ class Bot(commands.Bot):
                     db.update("users", f"user_id == {member.id}", role=0, role_paid_time=0)
                 else:
                     db.update("users", f"user_id == {member.id}", gold=member_data["gold"] - 100, role_paid_time=member_data["role_paid_time"] + 60 * 60 * 24 * 7)
-                    await send_log(guild, log_type="PrivateRolePayment", info=f"Роль {member} продлена")
+                    await send_log(guild, log_type="PrivateRolePayment", info=f"Роль продлена", member=member)
 
         new_name = f"ОНЛАЙН: {online_members}/{guild.member_count}"
         if new_name == channel.name:

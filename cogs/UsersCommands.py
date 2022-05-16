@@ -154,9 +154,6 @@ class Commands(commands.Cog):
 
     @slash_command(name="бросить-кубик", description="Бросить кубик и получить случайное число от 1 до 6 (стоимость: 2 золота)", guild_ids=[SERVER_ID])
     async def roll(self, interaction: Interaction):
-        if interaction.channel.id != CHANNELS["Flood"]:
-            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
-            return
         member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
         if member_gold < 2:
             await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
@@ -172,9 +169,6 @@ class Commands(commands.Cog):
     @slash_command(name="ударить", description="Ударить участника (стоимость: 40 золота)", guild_ids=[SERVER_ID])
     async def kick(self, interaction: Interaction,
                    member: Member = SlashOption(name="кого", description="Упоминание участника")):
-        if interaction.channel.id != CHANNELS["Flood"]:
-            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
-            return
         member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
         if member_gold < 40:
             await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
@@ -226,9 +220,6 @@ class Commands(commands.Cog):
     @slash_command(name="погладить", description="Погладить участника по голове (стоимость: 15 золота)", guild_ids=[SERVER_ID])
     async def pat(self, interaction: Interaction,
                   member: Member = SlashOption(name="кого", description="Упоминание участника")):
-        if interaction.channel.id != CHANNELS["Flood"]:
-            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
-            return
         member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
         if member_gold < 15:
             await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
@@ -253,9 +244,6 @@ class Commands(commands.Cog):
     @slash_command(name="укусить", description="Укусить участника (стоимость: 25 золота)", guild_ids=[SERVER_ID])
     async def bite(self, interaction: Interaction,
                   member: Member = SlashOption(name="кого", description="Упоминание участника")):
-        if interaction.channel.id != CHANNELS["Flood"]:
-            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
-            return
         member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
         if member_gold < 25:
             await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
@@ -280,9 +268,6 @@ class Commands(commands.Cog):
     @slash_command(name="признаться-в-любви", description="Рассказать участнику о своих чувствах (стоимость: 80 золота)", guild_ids=[SERVER_ID])
     async def love(self, interaction: Interaction,
                   member: Member = SlashOption(name="кому", description="Упоминание участника")):
-        if interaction.channel.id != CHANNELS["Flood"]:
-            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
-            return
         member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
         if member_gold < 80:
             await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
