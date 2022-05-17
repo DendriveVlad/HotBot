@@ -98,7 +98,7 @@ class SlotsChoice(Select):
             await interaction.followup.send(embed=Embed(title=f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
         user_db = self.db.select("users", f"user_id == {interaction.user.id}", "gold", "points", "challenge", "challenge_progress")
         self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + profit, points=user_db["points"] + 20, last_info=int(time()))
-        await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
+        await send_log(interaction.guild, log_type="CasinoResult", info=f"Игровой автомат: {profit} золота", member=interaction.user)
         if user_db["challenge"] == 7:
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
             if user_db["challenge_progress"] >= 4:
@@ -150,7 +150,7 @@ class Dice(View):
                                                                   f"Вы проиграли {abs(profit)} золота", colour=0xBF1818), ephemeral=True)
             user_db = self.db.select("users", f"user_id == {interaction.user.id}", "gold", "points", "challenge", "challenge_progress")
             self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + profit, points=user_db["points"] + 20, last_info=int(time()))
-            await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {profit} золота", member=interaction.user)
+            await send_log(interaction.guild, log_type="CasinoResult", info=f"Кости удачи: {profit} золота", member=interaction.user)
             if user_db["challenge"] == 7:
                 self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
                 if user_db["challenge_progress"] >= 4:
@@ -250,7 +250,7 @@ class MoneySnail(Select):
                 await interaction.followup.send(embed=Embed(title=f"Вы проиграли {view.profit} золота", colour=0xBF1818), ephemeral=True)
         user_db = self.db.select("users", f"user_id == {interaction.user.id}", "gold", "points", "challenge", "challenge_progress")
         self.db.update("users", f"user_id == {interaction.user.id}", gold=user_db["gold"] + view.profit, points=user_db["points"] + 20, last_info=int(time()))
-        await send_log(interaction.guild, log_type="CasinoResult", info=f"Результат игры: {view.profit} золота", member=interaction.user)
+        await send_log(interaction.guild, log_type="CasinoResult", info=f"Неуклюжая улитка: {view.profit} золота", member=interaction.user)
         if user_db["challenge"] == 7:
             self.db.update("users", f"user_id == {interaction.user.id}", challenge_progress=user_db["challenge_progress"] + 1)
             if user_db["challenge_progress"] >= 4:
@@ -275,7 +275,6 @@ class CasinoChoices(View):
         view = View()
         view.add_item(SlotsChoice(self.db, interaction.user.id, self.bot))
         await interaction.response.send_message("Выберите сколько Вы хотите поставить золота (Чем больше золота, тем выше шанс победить!)", ephemeral=True, view=view)
-        await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Игровой автомат", member=interaction.user)
 
     @button(label="Кости удачи", style=ButtonStyle.success, emoji="🎲")
     async def dice(self, _, interaction: Interaction):
@@ -289,7 +288,6 @@ class CasinoChoices(View):
         view = Dice(self.db, interaction.user.id, self.bot)
         await interaction.response.send_message("Выберите сколько Вы хотите поставить золота и на какое число Вы ставите.\n"
                                                 "(Чем ближе Ваше число будет к выпавшему, тем больше Вы получите золота)", ephemeral=True, view=view)
-        await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Кости удачи", member=interaction.user)
 
     @button(label="Неуклюжая улитка", style=ButtonStyle.success, emoji="🐌")
     async def snail(self, _, interaction: Interaction):
@@ -305,7 +303,6 @@ class CasinoChoices(View):
         await interaction.response.send_message("**Суть игры:** Помочь улитке пройти по хрупкому льду. Чем дальше вы пройдёте, тем больше шанс, что лёд треснет и улитка провалится. "
                                                 "Если улитка упадёт, то вы получите только половину от вложенного золота\n"
                                                 "Выберите сколько Вы хотите поставить золота", ephemeral=True, view=view)
-        await send_log(interaction.guild, log_type="CasinoPlay", info="Запустил Неуклюжую улитку", member=interaction.user)
 
 
 async def casino(channel: TextChannel, db, bot):

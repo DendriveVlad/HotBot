@@ -304,7 +304,6 @@ class Bot(commands.Bot):
                 voice = await serv.create_voice_channel(f"Канал для {member.name}", category=after.channel.category)
                 await voice.set_permissions(member, view_channel=True, speak=True)
                 text = await serv.create_text_channel("панель-управления-каналом", category=after.channel.category, overwrites=overwrites_text)
-                db.insert("private_voices", channel_id=voice.id, channel_owner=member.id, control_id=text.id)
                 await send_log(guild=serv, log_type="CreatePrivateChannel", info=f"Приватный канал создан", member=member)
                 try:
                     await member.move_to(channel=voice, reason="Создал канал для себя")
@@ -312,6 +311,7 @@ class Bot(commands.Bot):
                     await voice.delete()
                     await text.delete()
                     await send_log(guild=serv, log_type="RemovePrivateChannel", info=f"Приватный канал удалён", member=member)
+                db.insert("private_voices", channel_id=voice.id, channel_owner=member.id, control_id=text.id)
                 await text.send(f"<@{member.id}>", delete_after=1)
                 while True:
                     if await voice_control_panel(text, voice, member, self, db):
