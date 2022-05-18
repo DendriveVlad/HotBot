@@ -311,6 +311,7 @@ class Bot(commands.Bot):
                     await voice.delete()
                     await text.delete()
                     await send_log(guild=serv, log_type="RemovePrivateChannel", info=f"Приватный канал удалён", member=member)
+                    return
                 db.insert("private_voices", channel_id=voice.id, channel_owner=member.id, control_id=text.id)
                 await text.send(f"<@{member.id}>", delete_after=1)
                 while True:
