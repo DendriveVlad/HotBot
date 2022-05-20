@@ -1,4 +1,5 @@
 import os
+import threading
 from asyncio import sleep
 from time import time, ctime as ct
 from random import choice, randint
@@ -384,9 +385,21 @@ class Bot(commands.Bot):
         await channel.edit(name=f"ОНЛАЙН: {online_members}/{guild.member_count}")
 
 
-client = Bot()
-client.remove_command("help")
-for file in os.listdir("./cogs"):
-    if file.endswith(".py"):
-        client.load_extension(f"cogs.{file[:-3]}")
-client.run(TOKEN)
+class BotThread(threading.Thread):
+    def __init__(self, *args, **kwargs):
+        super(BotThread, self).__init__(*args, **kwargs)
+        self.client = None
+        self._stop = threading.Event()
+
+    def stop(self):
+        self.client.loop.stop()
+        self.client.close()
+        self._stop.set()
+
+    def run(self):
+        self.client = Bot()
+        self.client.remove_command("help")
+        for file in os.listdir("./cogs"):
+            if file.endswith(".py"):
+                self.client.load_extension(f"cogs.{file[:-3]}")
+        self.client.run(TOKEN)
