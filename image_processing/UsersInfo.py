@@ -109,9 +109,13 @@ class UserRewardChallenge(View):
             self.db.update("info", f"datetime=={dt}", datetime=dt + (60 * 60 * 24))
             await interaction.response.send_message(embed=Embed(description=f"Данные обновлены, нажмите на получение ежедневного задания ещё раз", color=0x21F300), ephemeral=True)
             return
-        date = self.db.select("users", f"user_id == {interaction.user.id}", "challenge", "last_challenge")
+        date = self.db.select("users", f"user_id == {interaction.user.id}", "challenge", "challenge_progress", "last_challenge")
         if int(time()) - date["last_challenge"] <= 60 * 60 * 24:
-            await interaction.response.send_message(embed=Embed(description=f"<@{interaction.user.id}>, Вы сегодня уже получили ежедневное задание" + (f"\nВаше задание на сегодня: **{challenges[date['challenge']]}**" if date["challenge"] else ""), color=0xBF1818), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(description=
+                                                                f"<@{interaction.user.id}>, Вы сегодня уже получили ежедневное задание" +
+                                                                (f"\nВаше задание на сегодня: **{challenges[date['challenge']]}**" if date["challenge"] else "") +
+                                                                (f" ({date['challenge_progress']})" if date["challenge_progress"] else ""),
+                                                                color=0xBF1818), ephemeral=True)
             self.db.update("users", f"user_id == {interaction.user.id}", last_info=int(time()))
             return
         challenge = randint(1, 8)

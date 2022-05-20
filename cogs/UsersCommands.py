@@ -188,14 +188,11 @@ class Commands(commands.Cog):
             "https://c.tenor.com/ZElYwhbPYvAAAAAd/one-punch-man-suiryu.gif",
             "https://c.tenor.com/VST-qfF1wqQAAAAC/take-that-cat.gif"
         )))
-        await interaction.response.send_message(f'{interaction.user.mention} {choice(("ударил", "прописал", "сломал лицо", "вдарил", "избил", "отмудохал"))} {member.mention}', embed=embed)
+        await interaction.response.send_message(f'{interaction.user.mention} {choice(("ударил(а)", "прописал(а)", "сломал(а) лицо", "вдарил(а)", "избил(а)", "отмудохал(а)"))} {member.mention}', embed=embed)
 
     @slash_command(name="обнять", description="Обнять участника (стоимость: 10 золота)", guild_ids=[SERVER_ID])
     async def hug(self, interaction: Interaction,
                   member: Member = SlashOption(name="кого", description="Упоминание участника")):
-        if interaction.channel.id != CHANNELS["Flood"]:
-            await interaction.response.send_message(embed=Embed(description="Команда работает только в канале <#714058786679291924>", color=0xBF1818), ephemeral=True)
-            return
         member_gold = db.select("users", f"user_id == {interaction.user.id}", "gold")["gold"]
         if member_gold < 10:
             await interaction.response.send_message(embed=Embed(description="У Вас недостаточно золота", color=0xBF1818), ephemeral=True)
