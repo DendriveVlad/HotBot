@@ -1,7 +1,6 @@
-import threading
 from time import time
 
-from nextcord import Intents, utils, Member, VoiceState, errors, AuditLogAction, Guild, User, Message, DMChannel, MessageType, Embed, PermissionOverwrite, Status
+from nextcord import Intents, Message, Status
 from nextcord.ext import tasks, commands
 
 from main import BotThread
